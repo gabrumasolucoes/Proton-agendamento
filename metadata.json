@@ -1,0 +1,5 @@
+{
+  "name": "Proton - Agendamento",
+  "description": "Sistema de agendamento inteligente para clínicas com integração de leads WhatsApp e Google Calendar style.",
+  "requestFramePermissions": []
+}
