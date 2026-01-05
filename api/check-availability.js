@@ -15,9 +15,9 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-// Configuração do Supabase
+// Configuração do Supabase - Usar service_role para bypass de RLS
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://kxxasmvsfxbbauepeiyn.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4eGFzbXZzZnhiYmF1ZXBlaXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NjUxMDEsImV4cCI6MjA4MTQ0MTEwMX0.0kf2DF0qpC74J4vonTywDwHoPhdegzqjkMU1P_MvefY';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4eGFzbXZzZnhiYmF1ZXBlaXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NjUxMDEsImV4cCI6MjA4MTQ0MTEwMX0.0kf2DF0qpC74J4vonTywDwHoPhdegzqjkMU1P_MvefY';
 
 // Token de autenticação para a API (segurança)
 const API_SECRET_TOKEN = process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026';
@@ -102,6 +102,13 @@ async function checkAvailabilityHandler(req, res) {
         }
 
         const { data: existingAppointments, error } = await query;
+
+        console.log(`📅 [check-availability] Query: user_id=${protonUserId}, date=${date}`);
+        console.log(`📅 [check-availability] dayStart=${dayStart.toISOString()}, dayEnd=${dayEnd.toISOString()}`);
+        console.log(`📅 [check-availability] Appointments encontrados: ${existingAppointments?.length || 0}`);
+        if (existingAppointments?.length > 0) {
+            console.log(`📅 [check-availability] Appointments:`, JSON.stringify(existingAppointments));
+        }
 
         if (error) {
             console.error('Erro ao buscar agendamentos:', error);
