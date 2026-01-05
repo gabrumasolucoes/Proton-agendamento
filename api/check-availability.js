@@ -153,23 +153,28 @@ function generateDaySlots(date, duration) {
     const slots = [];
     const { start, end, lunchStart, lunchEnd, slotDuration } = WORKING_HOURS;
 
+    // Offset de Brasília: UTC-3 (adicionar 3 horas para converter horário local para UTC)
+    const BRASILIA_OFFSET_HOURS = 3;
+
     for (let hour = start; hour < end; hour++) {
         // Pular horário de almoço
         if (hour >= lunchStart && hour < lunchEnd) continue;
 
         for (let minute = 0; minute < 60; minute += slotDuration) {
             const slotDate = new Date(date);
-            slotDate.setHours(hour, minute, 0, 0);
+            // Converter horário de Brasília para UTC (adicionar 3 horas)
+            slotDate.setUTCHours(hour + BRASILIA_OFFSET_HOURS, minute, 0, 0);
 
-            // Não incluir slots no passado
+            // Não incluir slots no passado (comparar em UTC)
             if (slotDate < new Date()) continue;
 
             // Verificar se o slot completo cabe antes do fim do expediente ou almoço
             const slotEnd = new Date(slotDate.getTime() + duration * 60000);
-            if (slotEnd.getHours() > end || (slotEnd.getHours() >= lunchStart && hour < lunchStart)) continue;
+            const slotEndHourBrasilia = slotEnd.getUTCHours() - BRASILIA_OFFSET_HOURS;
+            if (slotEndHourBrasilia > end || (slotEndHourBrasilia >= lunchStart && hour < lunchStart)) continue;
 
             slots.push({
-                time: slotDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
                 dateTime: slotDate.toISOString(),
                 period: hour < 12 ? 'manhã' : 'tarde'
             });
