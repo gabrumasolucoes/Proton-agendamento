@@ -6,6 +6,7 @@
  * 
  * Query params:
  * - date: Data no formato YYYY-MM-DD (obrigatório)
+ * - protonUserId: ID do usuário no Proton (OBRIGATÓRIO)
  * - doctorId: ID do médico (opcional)
  * - duration: Duração em minutos (padrão: 30)
  * 
@@ -50,7 +51,12 @@ async function checkAvailabilityHandler(req, res) {
     }
 
     try {
-        const { date, doctorId, duration = 30 } = req.query;
+        const { date, protonUserId, doctorId, duration = 30 } = req.query;
+
+        // Validar protonUserId
+        if (!protonUserId) {
+            return res.status(400).json({ error: 'Parâmetro "protonUserId" é obrigatório' });
+        }
 
         // Validar data
         if (!date) {
@@ -86,6 +92,7 @@ async function checkAvailabilityHandler(req, res) {
         let query = supabase
             .from('appointments')
             .select('start_time, end_time, doctor_id')
+            .eq('user_id', protonUserId)  // Filtrar pelo usuário do Proton
             .neq('status', 'cancelled')
             .gte('start_time', dayStart.toISOString())
             .lte('start_time', dayEnd.toISOString());

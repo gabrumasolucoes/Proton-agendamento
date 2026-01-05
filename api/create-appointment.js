@@ -12,7 +12,9 @@
  *   "duration": 30,
  *   "procedureType": "Consulta - Avaliação",
  *   "doctorName": "Dr. João" (opcional),
- *   "notes": "Agendado via WhatsApp" (opcional)
+ *   "notes": "Agendado via WhatsApp" (opcional),
+ *   "protonUserId": "uuid-do-usuario-proton" (OBRIGATÓRIO - vincula ao login do Proton),
+ *   "protonDoctorId": "uuid-do-medico" (opcional - médico específico)
  * }
  */
 
@@ -52,13 +54,22 @@ async function createAppointmentHandler(req, res) {
             duration = 30,
             procedureType,
             doctorName,
-            notes = 'Agendado via WhatsApp'
+            notes = 'Agendado via WhatsApp',
+            protonUserId,      // ID do usuário/login no Proton (obrigatório)
+            protonDoctorId     // ID do médico específico (opcional)
         } = req.body;
 
         // Validações
         if (!patientName || !patientPhone || !dateTime || !procedureType) {
             return res.status(400).json({
                 error: 'Campos obrigatórios: patientName, patientPhone, dateTime, procedureType'
+            });
+        }
+
+        // Validar protonUserId (obrigatório para vincular ao usuário correto)
+        if (!protonUserId) {
+            return res.status(400).json({
+                error: 'Campo obrigatório: protonUserId (ID do usuário no Proton)'
             });
         }
 
@@ -70,14 +81,14 @@ async function createAppointmentHandler(req, res) {
 
         const endDate = new Date(startDate.getTime() + duration * 60000);
 
-        // 1. Buscar ou criar paciente
-        let patient = await findOrCreatePatient(patientName, patientPhone);
+        // 1. Buscar ou criar paciente (vinculado ao usuário do Proton)
+        let patient = await findOrCreatePatient(patientName, patientPhone, protonUserId);
 
-        // 2. Buscar médico (usar primeiro disponível se não especificado)
-        let doctor = await findDoctor(doctorName);
+        // 2. Buscar médico (usar protonDoctorId se fornecido, senão buscar por nome ou primeiro disponível)
+        let doctor = await findDoctor(doctorName, protonUserId, protonDoctorId);
 
         // 3. Verificar disponibilidade
-        const isAvailable = await checkAvailability(startDate, endDate, doctor?.id);
+        const isAvailable = await checkAvailability(startDate, endDate, doctor?.id, protonUserId);
         if (!isAvailable) {
             return res.status(409).json({
                 error: 'Horário não disponível',
@@ -86,8 +97,9 @@ async function createAppointmentHandler(req, res) {
             });
         }
 
-        // 4. Criar agendamento
+        // 4. Criar agendamento (vinculado ao user_id do Proton)
         const appointmentData = {
+            user_id: protonUserId,       // IMPORTANTE: Vincula ao usuário correto do Proton
             patient_id: patient.id,
             patient_name: patientName,
             doctor_id: doctor?.id || null,
@@ -135,22 +147,23 @@ async function createAppointmentHandler(req, res) {
 
 // Funções auxiliares
 
-async function findOrCreatePatient(name, phone) {
-    // Buscar paciente existente pelo telefone
+async function findOrCreatePatient(name, phone, userId) {
+    // Buscar paciente existente pelo telefone E user_id
     const { data: existing } = await supabase
         .from('patients')
         .select('*')
         .eq('phone', phone)
+        .eq('user_id', userId)
         .single();
 
     if (existing) {
         return existing;
     }
 
-    // Criar novo paciente
+    // Criar novo paciente vinculado ao usuário
     const { data: newPatient, error } = await supabase
         .from('patients')
-        .insert([{ name, phone }])
+        .insert([{ name, phone, user_id: userId }])
         .select()
         .single();
 
@@ -163,11 +176,26 @@ async function findOrCreatePatient(name, phone) {
     return newPatient;
 }
 
-async function findDoctor(doctorName) {
+async function findDoctor(doctorName, userId, protonDoctorId) {
+    // Se forneceu ID específico do médico, usar esse
+    if (protonDoctorId) {
+        const { data } = await supabase
+            .from('doctors')
+            .select('*')
+            .eq('id', protonDoctorId)
+            .eq('user_id', userId)
+            .eq('active', true)
+            .single();
+        
+        if (data) return data;
+    }
+
+    // Se forneceu nome, buscar por nome
     if (doctorName) {
         const { data } = await supabase
             .from('doctors')
             .select('*')
+            .eq('user_id', userId)
             .ilike('name', `%${doctorName}%`)
             .eq('active', true)
             .single();
@@ -175,25 +203,27 @@ async function findDoctor(doctorName) {
         if (data) return data;
     }
 
-    // Retornar primeiro médico ativo se não especificado
+    // Retornar primeiro médico ativo do usuário se não especificado
     const { data: doctors } = await supabase
         .from('doctors')
         .select('*')
+        .eq('user_id', userId)
         .eq('active', true)
         .limit(1);
 
     return doctors?.[0] || null;
 }
 
-async function checkAvailability(startDate, endDate, doctorId) {
-    const query = supabase
+async function checkAvailability(startDate, endDate, doctorId, userId) {
+    let query = supabase
         .from('appointments')
         .select('id')
+        .eq('user_id', userId)
         .neq('status', 'cancelled')
         .or(`and(start_time.lte.${endDate.toISOString()},end_time.gte.${startDate.toISOString()})`);
 
     if (doctorId) {
-        query.eq('doctor_id', doctorId);
+        query = query.eq('doctor_id', doctorId);
     }
 
     const { data } = await query;
