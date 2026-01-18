@@ -24,12 +24,11 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
       console.log('🔐 [Proton] Detectado magic link na URL, processando...');
 
       try {
-        // O Supabase processa automaticamente o hash quando você chama getSession()
-        // Aguardar um pouco para garantir que o Supabase processou
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Verificar se a sessão foi criada após processar o hash
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // IMPORTANTE: getSessionFromUrl() é necessário para extrair os tokens do hash
+        // e armazená-los na sessão. getSession() só retorna sessão já armazenada.
+        const { data: { session }, error } = await supabase.auth.getSessionFromUrl({ 
+          storeSession: true 
+        });
 
         if (session && !error) {
           console.log('✅ [Proton] Login automático via magic link bem-sucedido');
