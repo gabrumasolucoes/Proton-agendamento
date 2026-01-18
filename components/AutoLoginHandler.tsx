@@ -57,34 +57,41 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
 
       console.log('🔐 [Proton] Detectado magic link na URL');
       
-      // Aguardar mais tempo para o Supabase processar e disparar onAuthStateChange
-      // O Supabase processa automaticamente via _getSessionFromURL e dispara SIGNED_IN
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Tentar múltiplas vezes - o Supabase pode processar mesmo com erro 403
+      // O erro 403 pode ser temporário ou não impedir a criação da sessão
+      for (let attempt = 1; attempt <= 5; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000)); // Delays progressivos: 1s, 2s, 3s, 4s, 5s
 
-      // Verificar se já foi processado pelo onAuthStateChange
-      if (handledAutoLogin) {
-        return;
-      }
-
-      // Fallback: verificar sessão diretamente
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (session && !sessionError && !handledAutoLogin) {
-          console.log('✅ [Proton] Sessão encontrada após aguardar, fazendo login...');
-          handledAutoLogin = true;
-          
-          const user = await apiAuth.getCurrentUser();
-          if (user) {
-            onAutoLogin(user);
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-          }
-        } else if (!session) {
-          console.warn('⚠️ [Proton] Sessão ainda não foi criada após aguardar. Aguardando onAuthStateChange...');
+        if (handledAutoLogin) {
+          return; // Já processado pelo onAuthStateChange
         }
-      } catch (error: any) {
-        console.error('❌ [Proton] Erro ao verificar sessão:', error);
+
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (session) {
+            // Mesmo que sessionError exista, se temos sessão, tentar usar
+            console.log(`✅ [Proton] Sessão encontrada na tentativa ${attempt}, tentando fazer login...`);
+            
+            const user = await apiAuth.getCurrentUser();
+            if (user) {
+              console.log('✅ [Proton] Login automático bem-sucedido!');
+              handledAutoLogin = true;
+              onAutoLogin(user);
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              return;
+            } else {
+              console.warn(`⚠️ [Proton] Tentativa ${attempt}: Sessão existe mas getCurrentUser retornou null`);
+            }
+          } else {
+            console.log(`⏳ [Proton] Tentativa ${attempt}: Sessão ainda não disponível`);
+          }
+        } catch (error: any) {
+          console.warn(`⚠️ [Proton] Tentativa ${attempt} falhou:`, error.message);
+        }
       }
+
+      console.warn('⚠️ [Proton] Não foi possível obter sessão após 5 tentativas. Aguardando onAuthStateChange...');
     };
 
     handleMagicLink();
