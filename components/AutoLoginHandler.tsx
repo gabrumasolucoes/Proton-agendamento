@@ -34,12 +34,21 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
             console.log('🔍 [Proton] Chamando apiAuth.getCurrentUser()...');
             
             // Timeout para evitar travamento se getCurrentUser demorar muito
-            const userPromise = apiAuth.getCurrentUser();
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout ao obter usuário')), 10000)
-            );
-            
-            const user = await Promise.race([userPromise, timeoutPromise]) as User | null;
+            let user: User | null = null;
+            try {
+              const userPromise = apiAuth.getCurrentUser();
+              const timeoutPromise = new Promise<null>((resolve) => 
+                setTimeout(() => {
+                  console.warn('⚠️ [Proton] getCurrentUser demorou mais de 5s, usando fallback...');
+                  resolve(null);
+                }, 5000)
+              );
+              
+              user = await Promise.race([userPromise, timeoutPromise]);
+            } catch (error: any) {
+              console.warn('⚠️ [Proton] Erro ao obter usuário (não crítico):', error.message);
+              user = null;
+            }
             
             if (user) {
               console.log('✅ [Proton] Usuário obtido com sucesso:', { id: user.id, email: user.email, name: user.name });
@@ -50,10 +59,9 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
               console.log('✅ [Proton] Login automático concluído!');
             } else {
-              console.warn('⚠️ [Proton] getCurrentUser retornou null ou undefined');
-              // Tentar criar usuário básico a partir da sessão
+              // Tentar criar usuário básico a partir da sessão (fallback)
               if (session?.user) {
-                console.log('🔄 [Proton] Tentando criar usuário básico a partir da sessão...');
+                console.log('🔄 [Proton] Usando usuário fallback a partir da sessão...');
                 const fallbackUser: User = {
                   id: session.user.id,
                   email: session.user.email || '',
