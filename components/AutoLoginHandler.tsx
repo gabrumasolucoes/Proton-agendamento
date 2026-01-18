@@ -56,6 +56,37 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
       }
 
       console.log('🔐 [Proton] Detectado magic link na URL');
+      console.log('🔐 [Proton] Hash completo (primeiros 200 chars):', hash.substring(0, 200));
+      
+      // Verificar também query params (pode vir ?token=... em vez de #access_token=...)
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenInQuery = urlParams.get('token');
+      const typeInQuery = urlParams.get('type');
+      
+      if (tokenInQuery && typeInQuery === 'magiclink') {
+        console.log('🔐 [Proton] Token encontrado em query params, tentando verificar...');
+        try {
+          // Tentar verificar o token manualmente
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenInQuery,
+            type: 'magiclink'
+          });
+          
+          if (data.session && !error) {
+            console.log('✅ [Proton] Token verificado via verifyOtp!');
+            const user = await apiAuth.getCurrentUser();
+            if (user) {
+              onAutoLogin(user);
+              window.history.replaceState(null, '', window.location.pathname);
+              return;
+            }
+          } else {
+            console.warn('⚠️ [Proton] verifyOtp falhou:', error);
+          }
+        } catch (error: any) {
+          console.warn('⚠️ [Proton] Erro ao verificar token:', error);
+        }
+      }
       
       // Tentar múltiplas vezes - o Supabase pode processar mesmo com erro 403
       // O erro 403 pode ser temporário ou não impedir a criação da sessão
