@@ -24,24 +24,37 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
       console.log('🔐 [Proton] Detectado magic link na URL, processando...');
 
       try {
-        // IMPORTANTE: getSessionFromUrl() é necessário para extrair os tokens do hash
-        // e armazená-los na sessão. getSession() só retorna sessão já armazenada.
-        const { data: { session }, error } = await supabase.auth.getSessionFromUrl({ 
-          storeSession: true 
-        });
+        // Extrair tokens do hash manualmente (compatível com versões antigas do Supabase)
+        // Formato: #access_token=xxx&refresh_token=yyy&expires_in=zzz&token_type=bearer
+        const hashParams = new URLSearchParams(hash.substring(1)); // Remove o '#'
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const expiresIn = hashParams.get('expires_in');
 
-        if (session && !error) {
-          console.log('✅ [Proton] Login automático via magic link bem-sucedido');
+        if (accessToken && refreshToken) {
+          console.log('🔐 [Proton] Tokens extraídos do hash, configurando sessão...');
+          
+          // Configurar a sessão usando setSession
+          const { data: { session }, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
 
-          // Obter dados do usuário usando a mesma função que o App usa
-          const user = await apiAuth.getCurrentUser();
-          if (user) {
-            onAutoLogin(user);
-            // Limpar hash da URL para não expor o token
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          if (session && !error) {
+            console.log('✅ [Proton] Login automático via magic link bem-sucedido');
+
+            // Obter dados do usuário usando a mesma função que o App usa
+            const user = await apiAuth.getCurrentUser();
+            if (user) {
+              onAutoLogin(user);
+              // Limpar hash da URL para não expor o token
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+          } else {
+            console.warn('⚠️ [Proton] Não foi possível configurar sessão:', error);
           }
         } else {
-          console.warn('⚠️ [Proton] Não foi possível processar magic link:', error);
+          console.warn('⚠️ [Proton] Tokens não encontrados no hash');
         }
       } catch (error: any) {
         console.error('❌ [Proton] Erro ao processar magic link:', error);
