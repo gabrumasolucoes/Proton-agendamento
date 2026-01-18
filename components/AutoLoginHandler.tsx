@@ -32,7 +32,14 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
             await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log('🔍 [Proton] Chamando apiAuth.getCurrentUser()...');
-            const user = await apiAuth.getCurrentUser();
+            
+            // Timeout para evitar travamento se getCurrentUser demorar muito
+            const userPromise = apiAuth.getCurrentUser();
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout ao obter usuário')), 10000)
+            );
+            
+            const user = await Promise.race([userPromise, timeoutPromise]) as User | null;
             
             if (user) {
               console.log('✅ [Proton] Usuário obtido com sucesso:', { id: user.id, email: user.email, name: user.name });
@@ -43,8 +50,24 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
               console.log('✅ [Proton] Login automático concluído!');
             } else {
-              console.warn('⚠️ [Proton] Sessão existe mas getCurrentUser retornou null');
-              handledAutoLogin = false; // Permitir tentar novamente
+              console.warn('⚠️ [Proton] getCurrentUser retornou null ou undefined');
+              // Tentar criar usuário básico a partir da sessão
+              if (session?.user) {
+                console.log('🔄 [Proton] Tentando criar usuário básico a partir da sessão...');
+                const fallbackUser: User = {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
+                  clinicName: session.user.user_metadata?.clinic_name || 'Minha Clínica'
+                };
+                console.log('✅ [Proton] Usuário fallback criado:', fallbackUser);
+                handledAutoLogin = true;
+                onAutoLogin(fallbackUser);
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                console.log('✅ [Proton] Login automático concluído com usuário fallback!');
+              } else {
+                handledAutoLogin = false; // Permitir tentar novamente
+              }
             }
           } catch (error: any) {
             console.error('❌ [Proton] Erro ao obter usuário após onAuthStateChange:', error);
