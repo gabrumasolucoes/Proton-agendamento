@@ -19,23 +19,30 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
     // Esta é a forma mais confiável - o Supabase dispara SIGNED_IN quando processa o hash
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔐 [Proton] onAuthStateChange:', event, session ? 'session exists' : 'no session');
+        console.log('🔐 [Proton] onAuthStateChange:', event, session ? `session exists (user: ${session.user?.id || 'no user id'})` : 'no session');
         
-        if (event === 'SIGNED_IN' && session && !handledAutoLogin) {
-          console.log('✅ [Proton] Usuário autenticado via magic link (onAuthStateChange)');
+        // Tentar processar para qualquer evento que tenha sessão, não apenas SIGNED_IN
+        if (session && !handledAutoLogin && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          console.log('✅ [Proton] Sessão detectada via onAuthStateChange, evento:', event);
           handledAutoLogin = true;
           
           try {
+            // Aguardar um pouco para garantir que a sessão está totalmente estabelecida
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const user = await apiAuth.getCurrentUser();
             if (user) {
+              console.log('✅ [Proton] Usuário obtido, fazendo login automático');
               onAutoLogin(user);
               // Limpar hash da URL para não expor o token
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
             } else {
               console.warn('⚠️ [Proton] Sessão existe mas getCurrentUser retornou null');
+              handledAutoLogin = false; // Permitir tentar novamente
             }
           } catch (error: any) {
-            console.error('❌ [Proton] Erro ao obter usuário após SIGNED_IN:', error);
+            console.error('❌ [Proton] Erro ao obter usuário após onAuthStateChange:', error);
+            handledAutoLogin = false; // Permitir tentar novamente
           }
         }
       }
