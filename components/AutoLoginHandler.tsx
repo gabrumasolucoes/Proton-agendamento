@@ -13,84 +13,74 @@ interface AutoLoginHandlerProps {
  */
 export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
   useEffect(() => {
-    const handleMagicLink = async () => {
-      // Verificar se há hash na URL (#access_token=... ou #token=...)
-      // O magic link do Supabase adiciona o token no hash
-      const hash = window.location.hash;
-      if (!hash || (!hash.includes('access_token') && !hash.includes('token'))) {
-        return; // Não é um magic link, não fazer nada
-      }
-
-      console.log('🔐 [Proton] Detectado magic link na URL, aguardando processamento automático do Supabase...');
-
-      // Aguardar um pouco para o Supabase processar automaticamente o hash
-      // O Supabase processa automaticamente via _getSessionFromURL na inicialização
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      try {
-        // Verificar se o Supabase já processou e criou a sessão
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (session && !sessionError) {
-          console.log('✅ [Proton] Sessão criada automaticamente pelo Supabase');
-          
-          // Obter dados do usuário usando a mesma função que o App usa
-          const user = await apiAuth.getCurrentUser();
-          if (user) {
-            onAutoLogin(user);
-            // Limpar hash da URL para não expor o token
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-          }
-        } else {
-          console.warn('⚠️ [Proton] Supabase não processou automaticamente. Tentando processar manualmente...');
-          console.warn('⚠️ [Proton] Erro da sessão:', sessionError);
-          
-          // Fallback: tentar processar manualmente apenas se o automático falhar
-          const hashParams = new URLSearchParams(hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
-          
-          if (accessToken && refreshToken) {
-            console.log('🔐 [Proton] Tentando configurar sessão manualmente...');
-            const { data: manualSession, error: manualError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (manualSession && !manualError) {
-              console.log('✅ [Proton] Sessão configurada manualmente com sucesso');
-              const user = await apiAuth.getCurrentUser();
-              if (user) {
-                onAutoLogin(user);
-                window.history.replaceState(null, '', window.location.pathname + window.location.search);
-              }
-            } else {
-              console.error('❌ [Proton] Erro ao configurar sessão manualmente:', manualError);
-            }
-          }
-        }
-      } catch (error: any) {
-        console.error('❌ [Proton] Erro ao processar magic link:', error);
-      }
-    };
-
-    handleMagicLink();
+    let handledAutoLogin = false; // Flag para evitar login duplicado
 
     // Listener para mudanças de autenticação do Supabase
-    // Isso captura mudanças mesmo se o hash não for processado no primeiro momento
+    // Esta é a forma mais confiável - o Supabase dispara SIGNED_IN quando processa o hash
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
+        console.log('🔐 [Proton] onAuthStateChange:', event, session ? 'session exists' : 'no session');
+        
+        if (event === 'SIGNED_IN' && session && !handledAutoLogin) {
           console.log('✅ [Proton] Usuário autenticado via magic link (onAuthStateChange)');
-          const user = await apiAuth.getCurrentUser();
-          if (user) {
-            onAutoLogin(user);
-            // Limpar hash da URL para não expor o token
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          handledAutoLogin = true;
+          
+          try {
+            const user = await apiAuth.getCurrentUser();
+            if (user) {
+              onAutoLogin(user);
+              // Limpar hash da URL para não expor o token
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            } else {
+              console.warn('⚠️ [Proton] Sessão existe mas getCurrentUser retornou null');
+            }
+          } catch (error: any) {
+            console.error('❌ [Proton] Erro ao obter usuário após SIGNED_IN:', error);
           }
         }
       }
     );
+
+    const handleMagicLink = async () => {
+      // Verificar se há hash na URL (#access_token=... ou #token=...)
+      const hash = window.location.hash;
+      if (!hash || (!hash.includes('access_token') && !hash.includes('token'))) {
+        return; // Não é um magic link
+      }
+
+      console.log('🔐 [Proton] Detectado magic link na URL');
+      
+      // Aguardar mais tempo para o Supabase processar e disparar onAuthStateChange
+      // O Supabase processa automaticamente via _getSessionFromURL e dispara SIGNED_IN
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Verificar se já foi processado pelo onAuthStateChange
+      if (handledAutoLogin) {
+        return;
+      }
+
+      // Fallback: verificar sessão diretamente
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session && !sessionError && !handledAutoLogin) {
+          console.log('✅ [Proton] Sessão encontrada após aguardar, fazendo login...');
+          handledAutoLogin = true;
+          
+          const user = await apiAuth.getCurrentUser();
+          if (user) {
+            onAutoLogin(user);
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        } else if (!session) {
+          console.warn('⚠️ [Proton] Sessão ainda não foi criada após aguardar. Aguardando onAuthStateChange...');
+        }
+      } catch (error: any) {
+        console.error('❌ [Proton] Erro ao verificar sessão:', error);
+      }
+    };
+
+    handleMagicLink();
 
     return () => {
       subscription.unsubscribe();
