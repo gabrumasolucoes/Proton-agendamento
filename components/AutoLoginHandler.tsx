@@ -24,24 +24,31 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
         // Tentar processar para qualquer evento que tenha sessão, não apenas SIGNED_IN
         if (session && !handledAutoLogin && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
           console.log('✅ [Proton] Sessão detectada via onAuthStateChange, evento:', event);
-          handledAutoLogin = true;
+          console.log('✅ [Proton] Dados da sessão:', { userId: session.user?.id, email: session.user?.email });
           
           try {
             // Aguardar um pouco para garantir que a sessão está totalmente estabelecida
+            console.log('⏳ [Proton] Aguardando 500ms antes de obter usuário...');
             await new Promise(resolve => setTimeout(resolve, 500));
             
+            console.log('🔍 [Proton] Chamando apiAuth.getCurrentUser()...');
             const user = await apiAuth.getCurrentUser();
+            
             if (user) {
-              console.log('✅ [Proton] Usuário obtido, fazendo login automático');
+              console.log('✅ [Proton] Usuário obtido com sucesso:', { id: user.id, email: user.email, name: user.name });
+              console.log('🔄 [Proton] Chamando onAutoLogin...');
+              handledAutoLogin = true;
               onAutoLogin(user);
               // Limpar hash da URL para não expor o token
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              console.log('✅ [Proton] Login automático concluído!');
             } else {
               console.warn('⚠️ [Proton] Sessão existe mas getCurrentUser retornou null');
               handledAutoLogin = false; // Permitir tentar novamente
             }
           } catch (error: any) {
             console.error('❌ [Proton] Erro ao obter usuário após onAuthStateChange:', error);
+            console.error('❌ [Proton] Stack trace:', error.stack);
             handledAutoLogin = false; // Permitir tentar novamente
           }
         }
