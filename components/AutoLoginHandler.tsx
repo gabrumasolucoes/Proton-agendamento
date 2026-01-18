@@ -68,6 +68,42 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
       console.log('🔐 [Proton] Detectado magic link na URL');
       console.log('🔐 [Proton] Hash completo (primeiros 200 chars):', hash.substring(0, 200));
       
+      // Extrair tokens diretamente do hash e tentar setSession manualmente
+      // Isso evita depender do processamento automático do Supabase que está dando 403
+      try {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const expiresIn = hashParams.get('expires_in');
+        const tokenType = hashParams.get('token_type');
+        
+        if (accessToken && refreshToken) {
+          console.log('🔐 [Proton] Extraindo tokens do hash para processamento manual...');
+          
+          // Tentar usar setSession diretamente com os tokens extraídos
+          // Isso pode funcionar mesmo se o processamento automático falhar
+          const { data: session, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (session && !sessionError) {
+            console.log('✅ [Proton] Sessão criada via setSession manual!');
+            const user = await apiAuth.getCurrentUser();
+            if (user) {
+              console.log('✅ [Proton] Login automático bem-sucedido via setSession!');
+              onAutoLogin(user);
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              return;
+            }
+          } else {
+            console.warn('⚠️ [Proton] setSession manual falhou:', sessionError);
+          }
+        }
+      } catch (error: any) {
+        console.warn('⚠️ [Proton] Erro ao processar hash manualmente:', error.message);
+      }
+      
       // Verificar também query params (pode vir ?token=... em vez de #access_token=...)
       const urlParams = new URLSearchParams(window.location.search);
       const tokenInQuery = urlParams.get('token');
