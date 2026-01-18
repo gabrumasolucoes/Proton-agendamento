@@ -50,7 +50,17 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
 
     const handleMagicLink = async () => {
       // Verificar se há hash na URL (#access_token=... ou #token=...)
-      const hash = window.location.hash;
+      let hash = window.location.hash;
+      
+      // CORREÇÃO: Remover duplicação de #access_token=#access_token=...
+      // O Supabase pode gerar URL com hash duplicado em alguns casos
+      if (hash && hash.startsWith('#access_token=#access_token=')) {
+        console.warn('⚠️ [Proton] Hash duplicado detectado, corrigindo...');
+        hash = hash.replace('#access_token=#access_token=', '#access_token=');
+        // Atualizar URL sem duplicação
+        window.history.replaceState(null, '', window.location.pathname + window.location.search + hash);
+      }
+      
       if (!hash || (!hash.includes('access_token') && !hash.includes('token'))) {
         return; // Não é um magic link
       }
