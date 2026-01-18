@@ -10,6 +10,7 @@ import { CreateAppointmentModal } from './components/CreateAppointmentModal';
 import { PatientsView } from './components/PatientsView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsModal } from './components/SettingsModal';
+import { AutoLoginHandler } from './components/AutoLoginHandler';
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
 import { apiData, apiAuth } from './services/api';
@@ -328,6 +329,11 @@ const App: React.FC = () => {
       }
   };
 
+  // AutoLoginHandler: processa magic links do Supabase para login automático
+  const handleAutoLogin = (loggedInUser: User) => {
+      handleLogin(loggedInUser, false);
+  };
+
   if (loading) {
       return (
           <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -338,7 +344,12 @@ const App: React.FC = () => {
 
   // --- Render Login if not authenticated ---
   if (!user) {
-      return <LoginScreen onLogin={handleLogin} />;
+      return (
+          <>
+              <AutoLoginHandler onAutoLogin={handleAutoLogin} />
+              <LoginScreen onLogin={handleLogin} />
+          </>
+      );
   }
 
   return (
