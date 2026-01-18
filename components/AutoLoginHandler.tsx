@@ -21,40 +21,53 @@ export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
         return; // Não é um magic link, não fazer nada
       }
 
-      console.log('🔐 [Proton] Detectado magic link na URL, processando...');
+      console.log('🔐 [Proton] Detectado magic link na URL, aguardando processamento automático do Supabase...');
+
+      // Aguardar um pouco para o Supabase processar automaticamente o hash
+      // O Supabase processa automaticamente via _getSessionFromURL na inicialização
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       try {
-        // Extrair tokens do hash manualmente (compatível com versões antigas do Supabase)
-        // Formato: #access_token=xxx&refresh_token=yyy&expires_in=zzz&token_type=bearer
-        const hashParams = new URLSearchParams(hash.substring(1)); // Remove o '#'
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const expiresIn = hashParams.get('expires_in');
-
-        if (accessToken && refreshToken) {
-          console.log('🔐 [Proton] Tokens extraídos do hash, configurando sessão...');
+        // Verificar se o Supabase já processou e criou a sessão
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session && !sessionError) {
+          console.log('✅ [Proton] Sessão criada automaticamente pelo Supabase');
           
-          // Configurar a sessão usando setSession
-          const { data: { session }, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-
-          if (session && !error) {
-            console.log('✅ [Proton] Login automático via magic link bem-sucedido');
-
-            // Obter dados do usuário usando a mesma função que o App usa
-            const user = await apiAuth.getCurrentUser();
-            if (user) {
-              onAutoLogin(user);
-              // Limpar hash da URL para não expor o token
-              window.history.replaceState(null, '', window.location.pathname + window.location.search);
-            }
-          } else {
-            console.warn('⚠️ [Proton] Não foi possível configurar sessão:', error);
+          // Obter dados do usuário usando a mesma função que o App usa
+          const user = await apiAuth.getCurrentUser();
+          if (user) {
+            onAutoLogin(user);
+            // Limpar hash da URL para não expor o token
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
           }
         } else {
-          console.warn('⚠️ [Proton] Tokens não encontrados no hash');
+          console.warn('⚠️ [Proton] Supabase não processou automaticamente. Tentando processar manualmente...');
+          console.warn('⚠️ [Proton] Erro da sessão:', sessionError);
+          
+          // Fallback: tentar processar manualmente apenas se o automático falhar
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            console.log('🔐 [Proton] Tentando configurar sessão manualmente...');
+            const { data: manualSession, error: manualError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (manualSession && !manualError) {
+              console.log('✅ [Proton] Sessão configurada manualmente com sucesso');
+              const user = await apiAuth.getCurrentUser();
+              if (user) {
+                onAutoLogin(user);
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              }
+            } else {
+              console.error('❌ [Proton] Erro ao configurar sessão manualmente:', manualError);
+            }
+          }
         }
       } catch (error: any) {
         console.error('❌ [Proton] Erro ao processar magic link:', error);
