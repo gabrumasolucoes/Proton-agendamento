@@ -271,7 +271,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
 
                     {/* Right Panel - User Details */}
                     <div className="w-1/2 flex flex-col">
-                        {selectedUserId && (
+                        {selectedUserId ? (
                             <>
                                 {loadingUserData ? (
                                     <div className="flex-1 flex items-center justify-center">
