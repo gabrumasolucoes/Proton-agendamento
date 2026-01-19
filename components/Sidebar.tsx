@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, Users, BarChart2, Settings, Plus, CalendarClock, LogOut } from 'lucide-react';
+import { Calendar, Users, BarChart2, Settings, Plus, CalendarClock, LogOut, Shield } from 'lucide-react';
 import { DoctorProfile, User } from '../types';
 
 interface SidebarProps {
@@ -12,6 +12,7 @@ interface SidebarProps {
   onToggleDoctor: (id: string) => void;
   onOpenSettings: () => void;
   onLogout: () => void;
+  onOpenAdminPanel?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -22,7 +23,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   doctors, 
   onToggleDoctor,
   onOpenSettings,
-  onLogout
+  onLogout,
+  onOpenAdminPanel
 }) => {
   
   return (
@@ -76,6 +78,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="mt-8 mb-6 px-2">
              <div className="h-px bg-slate-100 w-full"></div>
         </div>
+
+        {/* Admin Panel Button */}
+        {user?.isAdmin && onOpenAdminPanel && (
+            <>
+                <button
+                    onClick={() => onOpenAdminPanel()}
+                    className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-all font-medium mb-6"
+                >
+                    <Shield className="w-5 h-5" />
+                    <span className="text-sm">Admin Master</span>
+                </button>
+                <div className="mb-6 px-2">
+                     <div className="h-px bg-slate-100 w-full"></div>
+                </div>
+            </>
+        )}
         
         <div className="flex items-center justify-between px-2 mb-3">
              <p className="px-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Profissionais</p>

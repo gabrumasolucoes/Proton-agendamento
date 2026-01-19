@@ -11,6 +11,7 @@ import { PatientsView } from './components/PatientsView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsModal } from './components/SettingsModal';
 import { AutoLoginHandler } from './components/AutoLoginHandler';
+import { UsersManagementModal } from './components/UsersManagementModal';
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
 import { apiData, apiAuth } from './services/api';
@@ -36,6 +37,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'calendar' | 'patients' | 'reports'>('calendar');
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   
   // State for tags
   const [tags, setTags] = useState<ProcedureTag[]>(DEFAULT_TAGS);
@@ -61,6 +63,17 @@ const App: React.FC = () => {
   const loadData = async (userId: string, isDemo: boolean) => {
       setLoading(true);
       try {
+          // Se for admin master, carregar dados de todos os usuários
+          if (user?.isAdmin && userId === 'proton_admin_master') {
+              // Admin master não carrega dados normais, apenas verá gerenciamento
+              setAppointments([]);
+              setPatients([]);
+              setDoctors([]);
+              setNotifications([]);
+              setLoading(false);
+              return;
+          }
+
           const [apts, pts, docs] = await Promise.all([
               apiData.getAppointments(userId, isDemo),
               apiData.getPatients(userId, isDemo),
@@ -363,6 +376,7 @@ const App: React.FC = () => {
         onToggleDoctor={handleToggleDoctor}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
+        onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
       />
       
       <div className="flex-1 flex flex-col min-w-0">
@@ -416,6 +430,14 @@ const App: React.FC = () => {
             doctors={doctors}
             onAddDoctor={handleAddDoctor}
             onRemoveDoctor={handleRemoveDoctor}
+          />
+      )}
+
+      {user?.isAdmin && (
+          <UsersManagementModal 
+            isOpen={isAdminPanelOpen}
+            onClose={() => setIsAdminPanelOpen(false)}
+            currentUser={user}
           />
       )}
     </div>

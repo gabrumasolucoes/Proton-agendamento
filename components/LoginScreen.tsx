@@ -93,7 +93,49 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     setError(null);
     setSuccessMsg(null);
 
-    // --- BYPASS DE ADMIN LOCAL ---
+    // --- LOGIN ADMIN MASTER ---
+    // Verificar se é um email de admin master antes de tentar login normal
+    const adminMasterEmails = ['mauro.zanelato@gmail.com', 'gabrumasolucoes@gmail.com'];
+    const isAdminMasterEmail = adminMasterEmails.some(adminEmail => 
+        email.toLowerCase().trim() === adminEmail.toLowerCase()
+    );
+
+    if (isAdminMasterEmail && !isRegistering) {
+        try {
+            // Tentar login admin master via API
+            const response = await fetch('/api/auth-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email.trim(), password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Login admin master bem-sucedido
+                const adminUser: UserType = {
+                    id: 'proton_admin_master',
+                    name: data.user.name,
+                    email: data.user.email,
+                    clinicName: 'Admin Master Proton',
+                    role: 'admin',
+                    isAdmin: true,
+                    allUsers: data.allUsers || []
+                };
+                onLogin(adminUser, false); // false = não é demo
+                return;
+            } else {
+                // Se falhar, continuar com login normal (para compatibilidade)
+                console.warn('⚠️ [Login] Falha no login admin master, tentando login normal...');
+            }
+        } catch (adminError: any) {
+            console.warn('⚠️ [Login] Erro ao tentar login admin master:', adminError);
+            // Continuar com login normal
+        }
+    }
+    // -----------------------------
+
+    // --- BYPASS DE ADMIN LOCAL (DEMO) ---
     if (email === 'admin@proton.com' && password === 'admin123') {
         setTimeout(() => {
             const adminUser: UserType = {

@@ -8,6 +8,9 @@ const cors = require('cors');
 // Importar handlers da API
 const createAppointmentHandler = require('./api/create-appointment');
 const checkAvailabilityHandler = require('./api/check-availability');
+const authAdminHandler = require('./api/auth-admin');
+const listUsersHandler = require('./api/list-users');
+const getUserDataHandler = require('./api/get-user-data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +37,11 @@ app.post('/api/create-appointment', createAppointmentHandler);
 // Verificar disponibilidade (usado pelo SDR)
 app.get('/api/check-availability', checkAvailabilityHandler);
 
+// Admin Master APIs
+app.post('/api/auth-admin', authAdminHandler);
+app.get('/api/list-users', listUsersHandler);
+app.get('/api/get-user-data', getUserDataHandler);
+
 // ===== ARQUIVOS ESTÁTICOS =====
 
 // Servir arquivos estáticos da pasta dist
@@ -55,4 +63,7 @@ app.listen(PORT, () => {
     console.log(`   - POST /api/create-appointment`);
     console.log(`   - GET  /api/check-availability`);
     console.log(`   - GET  /api/health`);
+    console.log(`   - POST /api/auth-admin (Admin Master)`);
+    console.log(`   - GET  /api/list-users (Admin Master)`);
+    console.log(`   - GET  /api/get-user-data (Admin Master)`);
 });

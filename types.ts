@@ -4,6 +4,9 @@ export interface User {
   name: string;
   email: string;
   clinicName?: string;
+  role?: 'admin' | 'user';
+  isAdmin?: boolean;
+  allUsers?: any[]; // Para admin master
 }
 
 export interface Patient {
