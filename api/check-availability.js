@@ -27,7 +27,12 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 // Token de autenticação para a API (segurança)
 const API_SECRET_TOKEN = process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Criar cliente Supabase apenas se as variáveis estiverem configuradas
+const supabase = SUPABASE_URL && SUPABASE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: false }
+    })
+    : null;
 
 // Configuração de horário de funcionamento
 const WORKING_HOURS = {
@@ -39,6 +44,11 @@ const WORKING_HOURS = {
 };
 
 async function checkAvailabilityHandler(req, res) {
+    // Verificar se Supabase está configurado
+    if (!supabase) {
+        return res.status(500).json({ error: 'Database não configurado. Verifique as variáveis de ambiente SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.' });
+    }
+
     // Verificar método
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Método não permitido. Use GET.' });

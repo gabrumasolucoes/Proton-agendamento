@@ -21,6 +21,11 @@ async function authAdminHandler(req, res) {
         return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
     }
 
+    // Verificar se Supabase está configurado
+    if (!supabaseAdmin) {
+        return res.status(500).json({ error: 'Database não configurado. Verifique as variáveis de ambiente SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.' });
+    }
+
     try {
         const { email, password } = req.body || {};
 
