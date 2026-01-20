@@ -16,6 +16,7 @@ interface UsersManagementModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentUser: User;
+    onStartMirrorMode?: (userId: string, userName: string, userEmail: string) => void;
 }
 
 interface ProtonUser {
@@ -46,7 +47,7 @@ interface UserData {
     };
 }
 
-export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOpen, onClose, currentUser }) => {
+export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOpen, onClose, currentUser, onStartMirrorMode }) => {
     const [users, setUsers] = useState<ProtonUser[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -183,9 +184,17 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
     };
 
     const handleViewAsUser = async (userId: string) => {
-        setViewMode('mirror');
-        setSelectedUserId(userId);
-        await loadMirrorData(userId);
+        const selectedUser = users.find(u => u.id === userId);
+        if (selectedUser && onStartMirrorMode) {
+            // Transferir visualização para a tela principal
+            onStartMirrorMode(userId, selectedUser.name, selectedUser.email);
+            onClose(); // Fechar o modal
+        } else {
+            // Fallback: manter no modal (caso onStartMirrorMode não esteja disponível)
+            setViewMode('mirror');
+            setSelectedUserId(userId);
+            await loadMirrorData(userId);
+        }
     };
 
     const toggleUserExpand = (userId: string) => {

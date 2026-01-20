@@ -13,6 +13,7 @@ interface SidebarProps {
   onOpenSettings: () => void;
   onLogout: () => void;
   onOpenAdminPanel?: () => void;
+  isReadOnly?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -24,7 +25,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleDoctor,
   onOpenSettings,
   onLogout,
-  onOpenAdminPanel
+  onOpenAdminPanel,
+  isReadOnly = false
 }) => {
   
   return (
@@ -46,7 +48,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="px-5 mb-8">
         <button 
           onClick={() => onCreateClick('appointment')}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-200 rounded-xl py-3.5 px-4 flex items-center justify-center space-x-3 transition-all duration-200 group active:scale-[0.98]"
+          disabled={isReadOnly}
+          className={`w-full ${isReadOnly ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'} text-white shadow-xl shadow-slate-200 rounded-xl py-3.5 px-4 flex items-center justify-center space-x-3 transition-all duration-200 group ${!isReadOnly ? 'active:scale-[0.98]' : ''}`}
+          title={isReadOnly ? 'Modo visualização - não é possível criar agendamentos' : 'Criar novo agendamento'}
         >
             <Plus className="w-5 h-5 text-indigo-300" />
             <span className="font-semibold text-[15px]">Novo Agendamento</span>

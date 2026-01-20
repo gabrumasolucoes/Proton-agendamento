@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { addWeeks, subWeeks, addMonths, subMonths, addDays, subDays } from 'date-fns';
+import { Eye, ArrowLeft, Shield } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
@@ -38,6 +39,17 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [mirrorMode, setMirrorMode] = useState<{
+    isActive: boolean;
+    userId: string | null;
+    userName: string | null;
+    userEmail: string | null;
+  }>({
+    isActive: false,
+    userId: null,
+    userName: null,
+    userEmail: null
+  });
   
   // State for tags
   const [tags, setTags] = useState<ProcedureTag[]>(DEFAULT_TAGS);
@@ -63,8 +75,8 @@ const App: React.FC = () => {
   const loadData = async (userId: string, isDemo: boolean) => {
       setLoading(true);
       try {
-          // Se for admin master, carregar dados de todos os usuários
-          if (user?.isAdmin && userId === 'proton_admin_master') {
+          // Se for admin master SEM mirror mode, não carregar dados
+          if (user?.isAdmin && userId === 'proton_admin_master' && !mirrorMode.isActive) {
               // Admin master não carrega dados normais, apenas verá gerenciamento
               setAppointments([]);
               setPatients([]);
@@ -74,23 +86,26 @@ const App: React.FC = () => {
               return;
           }
 
+          // Se estiver em mirror mode, usar userId do mirror
+          const targetUserId = mirrorMode.isActive && mirrorMode.userId ? mirrorMode.userId : userId;
+
           const [apts, pts, docs] = await Promise.all([
-              apiData.getAppointments(userId, isDemo),
-              apiData.getPatients(userId, isDemo),
-              apiData.getDoctors(userId, isDemo)
+              apiData.getAppointments(targetUserId, isDemo),
+              apiData.getPatients(targetUserId, isDemo),
+              apiData.getDoctors(targetUserId, isDemo)
           ]);
 
           setAppointments(apts);
           setPatients(pts);
           
-          if (docs.length === 0 && !isDemo) {
-               // Create initial doctor if none exists for new user
+          if (docs.length === 0 && !isDemo && !mirrorMode.isActive) {
+               // Create initial doctor if none exists for new user (apenas se não estiver em mirror mode)
                const newDoc = await apiData.saveDoctor({
                    name: user?.name || 'Médico Principal',
                    specialty: 'Geral',
                    color: '#3b82f6',
                    active: true
-               }, userId, isDemo);
+               }, targetUserId, isDemo);
                setDoctors([newDoc]);
           } else {
               setDoctors(docs);
@@ -149,6 +164,11 @@ const App: React.FC = () => {
   };
 
   const handleCreateClick = (type: 'event' | 'task' | 'appointment') => {
+    // PROTEÇÃO: Bloquear criação quando estiver em mirror mode
+    if (mirrorMode.isActive) {
+      addNotification('Ação Bloqueada', 'Não é possível criar agendamentos no modo visualização (espelho).', 'warning');
+      return;
+    }
     setEditingAppointment(null);
     setIsCreateModalOpen(true);
   };
@@ -216,6 +236,17 @@ const App: React.FC = () => {
   const handleSaveAppointment = async (appointmentData: Appointment | Omit<Appointment, 'id' | 'status'>) => {
     if (!user) return;
 
+    // PROTEÇÃO: Bloquear salvamento quando estiver em mirror mode
+    if (mirrorMode.isActive) {
+      addNotification('Ação Bloqueada', 'Não é possível criar ou editar agendamentos no modo visualização (espelho).', 'warning');
+      setIsCreateModalOpen(false);
+      setEditingAppointment(null);
+      return;
+    }
+
+    // Usar userId correto (não usar mirrorMode.userId aqui, pois está protegido acima)
+    const targetUserId = user.id;
+
     let finalPatientId = appointmentData.patientId;
     let finalPatientName = appointmentData.patientName;
 
@@ -232,7 +263,7 @@ const App: React.FC = () => {
                 phone: '', 
                 email: ''
             };
-            const savedP = await apiData.savePatient(newPatientObj, user.id, isDemoMode);
+            const savedP = await apiData.savePatient(newPatientObj, targetUserId, isDemoMode);
             setPatients(prev => [...prev, savedP]);
             finalPatientId = savedP.id;
         }
@@ -246,7 +277,7 @@ const App: React.FC = () => {
         doctorId: appointmentData.doctorId || doctors[0]?.id
     };
 
-    const savedApt = await apiData.saveAppointment(appointmentToSave, user.id, isDemoMode);
+    const savedApt = await apiData.saveAppointment(appointmentToSave, targetUserId, isDemoMode);
     
     if (savedApt) {
         if ('id' in appointmentData) {
@@ -269,6 +300,13 @@ const App: React.FC = () => {
 
   const handleUpdateAppointmentStatus = async (appointmentId: string, newStatus: Appointment['status']) => {
     if (!user) return;
+
+    // PROTEÇÃO: Bloquear atualização de status quando estiver em mirror mode
+    if (mirrorMode.isActive) {
+      addNotification('Ação Bloqueada', 'Não é possível alterar status de agendamentos no modo visualização (espelho).', 'warning');
+      return;
+    }
+
     await apiData.updateAppointmentStatus(appointmentId, newStatus, isDemoMode);
     
     setAppointments(prev => prev.map(apt => 
@@ -289,6 +327,11 @@ const App: React.FC = () => {
   };
 
   const handleEditClick = (appointment: Appointment) => {
+    // PROTEÇÃO: Bloquear edição quando estiver em mirror mode
+    if (mirrorMode.isActive) {
+      addNotification('Ação Bloqueada', 'Não é possível editar agendamentos no modo visualização (espelho).', 'warning');
+      return;
+    }
     setEditingAppointment(appointment);
     setSelectedAppointment(null); 
     setIsCreateModalOpen(true); 
@@ -318,6 +361,7 @@ const App: React.FC = () => {
                     appointments={filteredAppointments}
                     onSelectAppointment={setSelectedAppointment}
                     searchTerm={searchTerm}
+                    isReadOnly={mirrorMode.isActive}
                 />
               );
           case 'patients':
@@ -327,10 +371,10 @@ const App: React.FC = () => {
                     appointments={filteredAppointments} 
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
-                    onAddPatient={handleAddPatient}
-                    onUpdatePatient={handleUpdatePatient}
-                    onDeletePatient={handleDeletePatient}
-                    onCreateAppointment={handleCreateAppointmentForPatient}
+                    onAddPatient={mirrorMode.isActive ? () => {} : handleAddPatient}
+                    onUpdatePatient={mirrorMode.isActive ? () => {} : handleUpdatePatient}
+                    onDeletePatient={mirrorMode.isActive ? () => {} : handleDeletePatient}
+                    onCreateAppointment={mirrorMode.isActive ? () => {} : handleCreateAppointmentForPatient}
                 />
               );
           case 'reports':
@@ -346,6 +390,51 @@ const App: React.FC = () => {
   const handleAutoLogin = (loggedInUser: User) => {
       handleLogin(loggedInUser, false);
   };
+
+  // Função para ativar modo mirror (visualizar como outro usuário)
+  const handleStartMirrorMode = async (userId: string, userName: string, userEmail: string) => {
+      setMirrorMode({
+          isActive: true,
+          userId,
+          userName,
+          userEmail
+      });
+      setIsAdminPanelOpen(false); // Fechar modal de admin
+      setCurrentView('calendar'); // Iniciar na visualização de calendário
+      // Carregar dados do usuário será feito pelo useEffect abaixo
+  };
+
+  // Função para desativar modo mirror (voltar ao admin)
+  const handleStopMirrorMode = () => {
+      setMirrorMode({
+          isActive: false,
+          userId: null,
+          userName: null,
+          userEmail: null
+      });
+      setCurrentView('calendar');
+      // Limpar dados (admin não tem dados próprios)
+      setAppointments([]);
+      setPatients([]);
+      setDoctors([]);
+      setNotifications([]);
+      setSelectedAppointment(null);
+      setIsCreateModalOpen(false);
+      setEditingAppointment(null);
+  };
+
+  // Recarregar dados quando mirror mode mudar
+  useEffect(() => {
+      if (mirrorMode.isActive && mirrorMode.userId && user) {
+          loadData(mirrorMode.userId, false);
+      } else if (!mirrorMode.isActive && user?.isAdmin && user.id === 'proton_admin_master') {
+          // Se sair do mirror mode e for admin, limpar dados
+          setAppointments([]);
+          setPatients([]);
+          setDoctors([]);
+          setNotifications([]);
+      }
+  }, [mirrorMode.isActive, mirrorMode.userId]);
 
   if (loading) {
       return (
@@ -368,7 +457,12 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-full bg-slate-50/50 overflow-hidden font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
       <Sidebar 
-        user={user}
+        user={mirrorMode.isActive ? {
+            ...user!,
+            name: mirrorMode.userName || user!.name,
+            email: mirrorMode.userEmail || user!.email,
+            clinicName: 'Visualizando como usuário'
+        } : user}
         onCreateClick={handleCreateClick} 
         currentView={currentView}
         onViewChange={setCurrentView}
@@ -377,11 +471,36 @@ const App: React.FC = () => {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
         onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
+        isReadOnly={mirrorMode.isActive}
       />
       
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Banner de Mirror Mode */}
+        {mirrorMode.isActive && (
+            <div className="bg-indigo-600 text-white px-4 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                        Visualizando como: <strong>{mirrorMode.userEmail}</strong>
+                    </span>
+                    <span className="text-xs opacity-75">(Modo espelho - apenas visualização)</span>
+                </div>
+                <button
+                    onClick={handleStopMirrorMode}
+                    className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar ao Admin
+                </button>
+            </div>
+        )}
+
         <Header 
-            user={user}
+            user={mirrorMode.isActive ? {
+                ...user!,
+                name: mirrorMode.userName || user!.name,
+                email: mirrorMode.userEmail || user!.email
+            } : user}
             currentDate={currentDate}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
@@ -404,8 +523,8 @@ const App: React.FC = () => {
         <AppointmentDetails 
             appointment={selectedAppointment}
             onClose={() => setSelectedAppointment(null)}
-            onUpdateStatus={handleUpdateAppointmentStatus}
-            onEdit={handleEditClick}
+            onUpdateStatus={mirrorMode.isActive ? undefined : handleUpdateAppointmentStatus}
+            onEdit={mirrorMode.isActive ? undefined : handleEditClick}
         />
       )}
 
@@ -438,6 +557,7 @@ const App: React.FC = () => {
             isOpen={isAdminPanelOpen}
             onClose={() => setIsAdminPanelOpen(false)}
             currentUser={user}
+            onStartMirrorMode={handleStartMirrorMode}
           />
       )}
     </div>
