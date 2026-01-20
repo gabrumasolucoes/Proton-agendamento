@@ -14,6 +14,7 @@ const getUserDataHandler = require('./api/get-user-data');
 const resetUserPasswordHandler = require('./api/reset-user-password');
 const deleteUserHandler = require('./api/delete-user');
 const createProtonUserHandler = require('./api/create-proton-user');
+const confirmAppointmentHandler = require('./api/confirm-appointment');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,10 +50,20 @@ app.delete('/api/delete-user', deleteUserHandler);
 app.post('/api/delete-user', deleteUserHandler); // Fallback POST
 app.post('/api/create-proton-user', createProtonUserHandler);
 
+// Confirmação de agendamento (público, sem autenticação)
+app.get('/api/confirm-appointment', confirmAppointmentHandler);
+app.post('/api/confirm-appointment', confirmAppointmentHandler);
+
 // ===== ARQUIVOS ESTÁTICOS =====
 
 // Servir arquivos estáticos da pasta dist
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Rota especial para página de confirmação (cp2/[token])
+app.get('/cp2/:token', (req, res) => {
+    const confirmPath = path.join(__dirname, 'dist', 'confirm.html');
+    res.sendFile(confirmPath);
+});
 
 // SPA fallback - rotas que não são API retornam index.html
 app.get('*', (req, res) => {
