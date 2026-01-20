@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Check, Trash2, Shield, User, Building2, Save } from 'lucide-react';
+import { X, UserPlus, Check, Trash2, Shield, User as UserIcon, Building2, Save } from 'lucide-react';
 import { DoctorProfile, User } from '../types';
 import { apiAuth } from '../services/api';
 
@@ -233,7 +233,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 {/* Email (read-only) */}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-2">
-                                        <User className="w-4 h-4 inline mr-1" />
+                                        <UserIcon className="w-4 h-4 inline mr-1" />
                                         Email
                                     </label>
                                     <input 
