@@ -15,6 +15,7 @@ const resetUserPasswordHandler = require('./api/reset-user-password');
 const deleteUserHandler = require('./api/delete-user');
 const createProtonUserHandler = require('./api/create-proton-user');
 const confirmAppointmentHandler = require('./api/confirm-appointment');
+const publicConfigHandler = require('./api/public-config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,9 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// Config pública para o frontend (Supabase URL e Anon Key em runtime)
+app.get('/api/public-config', publicConfigHandler);
 
 // Criar agendamento (usado pelo SDR)
 app.post('/api/create-appointment', createAppointmentHandler);

@@ -16,12 +16,14 @@ import { UsersManagementModal } from './components/UsersManagementModal';
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
 import { apiData, apiAuth } from './services/api';
+import { ensureSupabase } from './lib/supabase';
 
 const App: React.FC = () => {
   // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   // App State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -56,16 +58,29 @@ const App: React.FC = () => {
 
   // --- Auth & Data Loading Logic ---
 
-  // Initial Session Check
+  // Initial Session Check (ensureSupabase obtém config em runtime: /api/public-config ou VITE_*)
   useEffect(() => {
       const init = async () => {
           setLoading(true);
-          const currentUser = await apiAuth.getCurrentUser();
-          if (currentUser) {
-              setUser(currentUser);
-              setIsDemoMode(false);
-              await loadData(currentUser.id, false);
-          } else {
+          try {
+              await ensureSupabase();
+          } catch (e) {
+              console.error('[Proton] Supabase não configurado:', e);
+              setConfigError((e as Error)?.message || 'Supabase não configurado');
+              setLoading(false);
+              return;
+          }
+          try {
+              const currentUser = await apiAuth.getCurrentUser();
+              if (currentUser) {
+                  setUser(currentUser);
+                  setIsDemoMode(false);
+                  await loadData(currentUser.id, false);
+              } else {
+                  setLoading(false);
+              }
+          } catch (e) {
+              console.error('[Proton] Erro ao obter sessão:', e);
               setLoading(false);
           }
       };
@@ -531,6 +546,21 @@ const App: React.FC = () => {
       return (
           <div className="flex h-screen items-center justify-center bg-slate-50">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+      );
+  }
+
+  if (configError) {
+      return (
+          <div className="flex h-screen items-center justify-center bg-slate-50 p-6">
+              <div className="max-w-md text-center space-y-4">
+                  <h2 className="text-xl font-semibold text-slate-800">Configuração necessária</h2>
+                  <p className="text-slate-600">{configError}</p>
+                  <p className="text-sm text-slate-500">
+                      No Railway, defina <code className="bg-slate-200 px-1 rounded">SUPABASE_URL</code> e{' '}
+                      <code className="bg-slate-200 px-1 rounded">SUPABASE_ANON_KEY</code> para o serviço Proton.
+                  </p>
+              </div>
           </div>
       );
   }

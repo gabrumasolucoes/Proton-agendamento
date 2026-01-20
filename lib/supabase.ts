@@ -1,41 +1,67 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-import { createClient } from '@supabase/supabase-js';
+// Cliente criado após ensureSupabase(). Uso via export supabase (Proxy).
+let _client: SupabaseClient | null = null;
 
-// ⚠️ CRÍTICO: NUNCA hardcode chaves de segurança. Use apenas variáveis de ambiente.
-// As credenciais devem ser fornecidas via variáveis de ambiente ou localStorage (configuração manual do usuário)
-const PROJECT_URL = null; // Removido hardcode por segurança
-const PROJECT_KEY = null; // Removido hardcode por segurança
+/**
+ * Obtém URL e Anon Key: localStorage > import.meta.env > /api/public-config
+ */
+async function resolveConfig(): Promise<{ url: string; key: string }> {
+  const localUrl = typeof localStorage !== 'undefined' ? localStorage.getItem('proton_supabase_url') : null;
+  const localKey = typeof localStorage !== 'undefined' ? localStorage.getItem('proton_supabase_key') : null;
 
-// Tenta pegar do localStorage (configuração manual) ou das variáveis de ambiente
-const getStoredConfig = () => {
-  try {
-    const localUrl = localStorage.getItem('proton_supabase_url');
-    const localKey = localStorage.getItem('proton_supabase_key');
-    
-    // Ordem de prioridade: 
-    // 1. LocalStorage (se o usuário sobrescreveu manualmente na UI)
-    // 2. Variáveis de ambiente (Vite)
-    // ⚠️ NÃO usar valores hardcoded por segurança
-    const env = (import.meta as any).env || {};
-    return {
-      url: localUrl || env.VITE_SUPABASE_URL || null,
-      key: localKey || env.VITE_SUPABASE_ANON_KEY || null
-    };
-  } catch (e) {
-    return { url: null, key: null };
+  let url = localUrl || (import.meta as any).env?.VITE_SUPABASE_URL || null;
+  let key = localKey || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || null;
+
+  if (url && key && url !== 'https://placeholder.supabase.co' && !key.includes('placeholder')) {
+    return { url, key };
   }
-};
 
-const config = getStoredConfig();
+  try {
+    const res = await fetch('/api/public-config');
+    if (res.ok) {
+      const j = await res.json();
+      if (j.supabaseUrl && j.supabaseAnonKey) {
+        return { url: j.supabaseUrl, key: j.supabaseAnonKey };
+      }
+    }
+  } catch (e) {
+    console.warn('[Proton Supabase] Erro ao buscar /api/public-config:', e);
+  }
 
-export const isSupabaseConfigured = 
-  config.url && 
-  config.key && 
-  config.url !== 'https://placeholder.supabase.co' &&
-  !config.url.includes('placeholder');
+  throw new Error(
+    'Supabase não configurado. Defina SUPABASE_URL e SUPABASE_ANON_KEY no servidor (Railway) ou VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no build.'
+  );
+}
 
-// Initialize client.
-export const supabase = createClient(
-  config.url || 'https://placeholder.supabase.co',
-  config.key || 'placeholder'
-);
+/**
+ * Inicializa o cliente Supabase. Deve ser chamado antes de qualquer uso de `supabase`.
+ */
+export async function ensureSupabase(): Promise<SupabaseClient> {
+  if (_client) return _client;
+
+  const { url, key } = await resolveConfig();
+  _client = createClient(url, key, {
+    auth: { autoRefreshToken: true, persistSession: true },
+  });
+  return _client;
+}
+
+export function isSupabaseConfigured(): boolean {
+  return _client != null;
+}
+
+/**
+ * Acesso ao cliente. Só use após ensureSupabase() ter sido await.
+ * Se usar antes, o Proxy lança erro.
+ */
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    if (!_client) {
+      throw new Error(
+        'Supabase não inicializado. Chame await ensureSupabase() antes de usar supabase.'
+      );
+    }
+    return (_client as Record<string | symbol, unknown>)[prop];
+  },
+});

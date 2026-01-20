@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { apiAuth } from '../services/api';
 import { User } from '../types';
 
@@ -13,6 +13,8 @@ interface AutoLoginHandlerProps {
  */
 export function AutoLoginHandler({ onAutoLogin }: AutoLoginHandlerProps) {
   useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
     let handledAutoLogin = false; // Flag para evitar login duplicado
 
     // Listener para mudanças de autenticação do Supabase
