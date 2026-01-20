@@ -21,8 +21,13 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Configuração do Supabase - usar service_role key para bypass de RLS
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://kxxasmvsfxbbauepeiyn.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4eGFzbXZzZnhiYmF1ZXBlaXluIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTg2NTEwMSwiZXhwIjoyMDgxNDQxMTAxfQ.sFExdUPr-RbbtNrbis8o2lRnPfRL6ykOrlBO6M6j7x8';
+// ⚠️ CRÍTICO: NUNCA hardcode chaves de segurança. Use apenas variáveis de ambiente.
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('❌ [create-appointment] SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_ANON_KEY) devem estar configurados.');
+}
 
 // Token de autenticação para a API (segurança)
 const API_SECRET_TOKEN = process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026';

@@ -83,9 +83,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   // Config Modal State
   const [showConfig, setShowConfig] = useState(false);
   
-  // Default URL/Key pre-filled from code or localStorage
-  const [configUrl, setConfigUrl] = useState(localStorage.getItem('proton_supabase_url') || 'https://kxxasmvsfxbbauepeiyn.supabase.co');
-  const [configKey, setConfigKey] = useState(localStorage.getItem('proton_supabase_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4eGFzbXZzZnhiYmF1ZXBlaXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NjUxMDEsImV4cCI6MjA4MTQ0MTEwMX0.0kf2DF0qpC74J4vonTywDwHoPhdegzqjkMU1P_MvefY');
+  // Default URL/Key pre-filled from localStorage (não usar valores hardcoded por segurança)
+  const [configUrl, setConfigUrl] = useState(localStorage.getItem('proton_supabase_url') || '');
+  const [configKey, setConfigKey] = useState(localStorage.getItem('proton_supabase_key') || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
