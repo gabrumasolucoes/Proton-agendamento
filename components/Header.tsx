@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, HelpCircle, ChevronLeft, ChevronRight, Calendar, Check, X, MessageSquare, BookOpen, Keyboard, ExternalLink, LifeBuoy, Info, LayoutList, Columns } from 'lucide-react';
+import { Search, Bell, HelpCircle, ChevronLeft, ChevronRight, Calendar, Check, X, MessageSquare, BookOpen, Keyboard, ExternalLink, LifeBuoy, Info, LayoutList, Columns, HelpCircle as HelpCircleIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppNotification, CalendarViewMode, User } from '../types';
@@ -40,7 +40,53 @@ export const Header: React.FC<HeaderProps> = ({
   // State for Dropdowns/Modals
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isFAQOpen, setIsFAQOpen] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Dúvidas Frequentes
+  const faqs = [
+    {
+      question: "Como criar um novo agendamento?",
+      answer: "Clique no botão 'Novo Agendamento' na barra lateral esquerda ou pressione a tecla 'N' no teclado. Preencha as informações do paciente, data, horário e procedimento desejado."
+    },
+    {
+      question: "Como buscar um agendamento específico?",
+      answer: "Use a barra de busca no topo da tela para buscar por nome do paciente, procedimento ou qualquer termo relacionado. Você também pode pressionar '/' para focar na busca."
+    },
+    {
+      question: "Como alterar a visualização da agenda?",
+      answer: "Use os botões 'Dia', 'Semana' e 'Mês' no topo da tela para alternar entre diferentes visualizações do calendário."
+    },
+    {
+      question: "Como gerenciar meus pacientes?",
+      answer: "Acesse a aba 'Pacientes' no menu lateral para visualizar todos os pacientes cadastrados, adicionar novos, editar informações ou criar agendamentos para pacientes existentes."
+    },
+    {
+      question: "Como visualizar relatórios e estatísticas?",
+      answer: "Clique na aba 'Relatórios' no menu lateral para acessar métricas de performance, total de atendimentos, média diária e taxa de cancelamento."
+    },
+    {
+      question: "Como adicionar ou remover profissionais?",
+      answer: "Acesse 'Configurações' no menu lateral e vá para a aba 'Profissionais'. Lá você pode adicionar novos profissionais com suas especialidades e cores de identificação."
+    },
+    {
+      question: "Como atualizar minhas informações pessoais?",
+      answer: "Acesse 'Configurações' no menu lateral e vá para a aba 'Conta'. Você pode atualizar seu nome e o nome da clínica. O email não pode ser alterado."
+    },
+    {
+      question: "O que significa 'Modo espelho' para admin?",
+      answer: "O modo espelho permite que administradores visualizem a interface exatamente como um usuário específico a vê, incluindo agenda, pacientes e relatórios, sem poder fazer alterações."
+    },
+    {
+      question: "Como filtrar agendamentos por profissional?",
+      answer: "Na barra lateral, você pode ativar ou desativar a visualização de cada profissional usando as caixas de seleção. Isso filtra os agendamentos exibidos na agenda."
+    },
+    {
+      question: "Os dados são salvos automaticamente?",
+      answer: "Sim, todas as alterações (agendamentos, pacientes, configurações) são salvas automaticamente quando você confirma a ação. Não é necessário salvar manualmente."
+    }
+  ];
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -257,17 +303,17 @@ export const Header: React.FC<HeaderProps> = ({
                     
                     <div className="p-2">
                         <button 
-                            onClick={() => window.open('https://google.com', '_blank')}
+                            onClick={() => setIsFAQOpen(true)}
                             className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors group text-left"
                         >
                             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <BookOpen className="w-5 h-5" />
+                                <HelpCircleIcon className="w-5 h-5" />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-sm font-bold text-slate-800">Documentação</h3>
-                                <p className="text-xs text-slate-500">Guias passo-a-passo do sistema.</p>
+                                <h3 className="text-sm font-bold text-slate-800">Dúvidas Frequentes</h3>
+                                <p className="text-xs text-slate-500">Perguntas e respostas sobre o sistema.</p>
                             </div>
-                            <ExternalLink className="w-4 h-4 text-slate-300" />
+                            <ChevronRight className="w-4 h-4 text-slate-300" />
                         </button>
                         
                         <button 
@@ -304,7 +350,76 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     
                     <div className="bg-slate-50 p-4 text-center border-t border-slate-100">
-                        <p className="text-[10px] text-slate-400 font-medium">CliniCal AI v1.0.2 • Build 2024</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Proton v1.0.2 • Build 2024</p>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* FAQ Modal */}
+        {isFAQOpen && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                {/* Backdrop Click Handler */}
+                <div className="absolute inset-0" onClick={() => setIsFAQOpen(false)}></div>
+                
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden relative z-10 flex flex-col">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 text-white relative flex-shrink-0">
+                        <button 
+                            onClick={() => setIsFAQOpen(false)}
+                            className="absolute right-4 top-4 p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <HelpCircleIcon className="w-10 h-10 mb-3 opacity-80" />
+                        <h2 className="text-xl font-bold">Dúvidas Frequentes</h2>
+                        <p className="text-indigo-100 text-sm mt-1">Encontre respostas para as perguntas mais comuns</p>
+                    </div>
+                    
+                    {/* FAQ Content */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+                        {faqs.map((faq, index) => (
+                            <div 
+                                key={index}
+                                className="bg-white border border-slate-200 rounded-xl overflow-hidden transition-all hover:shadow-md"
+                            >
+                                <button
+                                    onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
+                                    className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
+                                >
+                                    <div className="flex items-start gap-3 flex-1">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <span className="text-xs font-bold">{index + 1}</span>
+                                        </div>
+                                        <h3 className="text-sm font-bold text-slate-800 flex-1">{faq.question}</h3>
+                                    </div>
+                                    {expandedFAQ === index ? (
+                                        <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0 ml-2" />
+                                    ) : (
+                                        <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0 ml-2" />
+                                    )}
+                                </button>
+                                {expandedFAQ === index && (
+                                    <div className="px-4 pb-4 pl-16 animate-in slide-in-from-top-2 duration-200">
+                                        <p className="text-sm text-slate-600 leading-relaxed">{faq.answer}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Footer */}
+                    <div className="bg-slate-50 p-4 text-center border-t border-slate-100 flex-shrink-0">
+                        <p className="text-xs text-slate-500 mb-2">Não encontrou sua resposta?</p>
+                        <button
+                            onClick={() => {
+                                setIsFAQOpen(false);
+                                setIsHelpOpen(true);
+                            }}
+                            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                        >
+                            Entre em contato com o Suporte Técnico
+                        </button>
                     </div>
                 </div>
             </div>
