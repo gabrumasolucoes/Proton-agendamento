@@ -11,6 +11,9 @@ const checkAvailabilityHandler = require('./api/check-availability');
 const authAdminHandler = require('./api/auth-admin');
 const listUsersHandler = require('./api/list-users');
 const getUserDataHandler = require('./api/get-user-data');
+const resetUserPasswordHandler = require('./api/reset-user-password');
+const deleteUserHandler = require('./api/delete-user');
+const createProtonUserHandler = require('./api/create-proton-user');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +44,10 @@ app.get('/api/check-availability', checkAvailabilityHandler);
 app.post('/api/auth-admin', authAdminHandler);
 app.get('/api/list-users', listUsersHandler);
 app.get('/api/get-user-data', getUserDataHandler);
+app.post('/api/reset-user-password', resetUserPasswordHandler);
+app.delete('/api/delete-user', deleteUserHandler);
+app.post('/api/delete-user', deleteUserHandler); // Fallback POST
+app.post('/api/create-proton-user', createProtonUserHandler);
 
 // ===== ARQUIVOS ESTÁTICOS =====
 
@@ -66,4 +73,7 @@ app.listen(PORT, () => {
     console.log(`   - POST /api/auth-admin (Admin Master)`);
     console.log(`   - GET  /api/list-users (Admin Master)`);
     console.log(`   - GET  /api/get-user-data (Admin Master)`);
+    console.log(`   - POST /api/reset-user-password (Admin Master)`);
+    console.log(`   - DELETE/POST /api/delete-user (Admin Master)`);
+    console.log(`   - POST /api/create-proton-user (Admin Master)`);
 });

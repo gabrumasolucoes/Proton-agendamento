@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, Users, Mail, Building2, Calendar, UserPlus, Shield, Search, ChevronDown, ChevronRight, Phone, Activity, Clock } from 'lucide-react';
+import { X, Users, Mail, Building2, Calendar, UserPlus, Shield, Search, ChevronDown, ChevronRight, Phone, Activity, Clock, Key, Trash2 } from 'lucide-react';
 import { User } from '../types';
 
 interface UsersManagementModalProps {
@@ -50,6 +50,44 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
     const [loadingUserData, setLoadingUserData] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+    const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+        isOpen: boolean;
+        user: ProtonUser | null;
+        newPassword: string;
+        confirmPassword: string;
+    }>({
+        isOpen: false,
+        user: null,
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [resetLoading, setResetLoading] = useState(false);
+    const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{
+        isOpen: boolean;
+        user: ProtonUser | null;
+    }>({
+        isOpen: false,
+        user: null
+    });
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [createUserDialog, setCreateUserDialog] = useState<{
+        isOpen: boolean;
+        email: string;
+        name: string;
+        clinicName: string;
+        password: string;
+        confirmPassword: string;
+    }>({
+        isOpen: false,
+        email: '',
+        name: '',
+        clinicName: '',
+        password: '',
+        confirmPassword: ''
+    });
+    const [createUserLoading, setCreateUserLoading] = useState(false);
+    const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen && currentUser?.isAdmin) {
@@ -117,6 +155,202 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         setExpandedUsers(newExpanded);
     };
 
+    // Função para resetar senha
+    const handleResetPassword = (user: ProtonUser) => {
+        setResetPasswordDialog({
+            isOpen: true,
+            user,
+            newPassword: '',
+            confirmPassword: ''
+        });
+        setResetSuccess(null);
+    };
+
+    const handleConfirmResetPassword = async () => {
+        if (!resetPasswordDialog.user) return;
+
+        if (!resetPasswordDialog.newPassword || resetPasswordDialog.newPassword.length < 6) {
+            setResetSuccess('❌ A senha deve ter pelo menos 6 caracteres');
+            return;
+        }
+
+        if (resetPasswordDialog.newPassword !== resetPasswordDialog.confirmPassword) {
+            setResetSuccess('❌ As senhas não coincidem');
+            return;
+        }
+
+        setResetLoading(true);
+        setResetSuccess(null);
+
+        try {
+            const response = await fetch('/api/reset-user-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: resetPasswordDialog.user.id,
+                    newPassword: resetPasswordDialog.newPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setResetSuccess(`✅ Senha resetada com sucesso para ${resetPasswordDialog.user.email}`);
+                setResetPasswordDialog({
+                    isOpen: false,
+                    user: null,
+                    newPassword: '',
+                    confirmPassword: ''
+                });
+                setTimeout(() => setResetSuccess(null), 3000);
+            } else {
+                const errorMsg = data.error || 'Erro ao resetar senha';
+                const detailsMsg = data.details ? `\n\n${data.details}` : '';
+                setResetSuccess(`❌ Erro: ${errorMsg}${detailsMsg}`);
+            }
+        } catch (err: any) {
+            console.error('Erro ao resetar senha:', err);
+            setResetSuccess(`❌ Erro: ${err.message || 'Erro ao resetar senha'}`);
+        } finally {
+            setResetLoading(false);
+        }
+    };
+
+    // Função para deletar usuário
+    const handleDeleteUser = (user: ProtonUser) => {
+        setDeleteDialog({
+            isOpen: true,
+            user
+        });
+    };
+
+    const handleConfirmDeleteUser = async () => {
+        if (!deleteDialog.user) return;
+
+        setDeleteLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch('/api/delete-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: deleteDialog.user.id
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Remover usuário da lista
+                setUsers(prev => prev.filter(u => u.id !== deleteDialog.user!.id));
+                
+                // Se o usuário deletado estava selecionado, limpar seleção
+                if (selectedUserId === deleteDialog.user.id) {
+                    setSelectedUserId(null);
+                    setUserData(null);
+                }
+
+                setDeleteDialog({
+                    isOpen: false,
+                    user: null
+                });
+
+                // Mostrar mensagem de sucesso temporária
+                setError(`✅ ${data.message}`);
+                setTimeout(() => setError(null), 3000);
+            } else {
+                const errorMsg = data.error || 'Erro ao deletar usuário';
+                const detailsMsg = data.details ? `\n\n${data.details}` : '';
+                setError(`❌ Erro: ${errorMsg}${detailsMsg}`);
+            }
+        } catch (err: any) {
+            console.error('Erro ao deletar usuário:', err);
+            setError(`❌ Erro: ${err.message || 'Erro ao deletar usuário'}`);
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    // Função para criar usuário
+    const handleCreateUser = () => {
+        setCreateUserDialog({
+            isOpen: true,
+            email: '',
+            name: '',
+            clinicName: '',
+            password: '',
+            confirmPassword: ''
+        });
+        setCreateUserSuccess(null);
+    };
+
+    const handleConfirmCreateUser = async () => {
+        if (!createUserDialog.email || !createUserDialog.email.includes('@')) {
+            setCreateUserSuccess('❌ Email inválido');
+            return;
+        }
+
+        if (!createUserDialog.name || createUserDialog.name.trim().length === 0) {
+            setCreateUserSuccess('❌ Nome é obrigatório');
+            return;
+        }
+
+        if (!createUserDialog.password || createUserDialog.password.length < 6) {
+            setCreateUserSuccess('❌ A senha deve ter pelo menos 6 caracteres');
+            return;
+        }
+
+        if (createUserDialog.password !== createUserDialog.confirmPassword) {
+            setCreateUserSuccess('❌ As senhas não coincidem');
+            return;
+        }
+
+        setCreateUserLoading(true);
+        setCreateUserSuccess(null);
+
+        try {
+            const response = await fetch('/api/create-proton-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: createUserDialog.email.trim(),
+                    name: createUserDialog.name.trim(),
+                    clinicName: createUserDialog.clinicName.trim(),
+                    password: createUserDialog.password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setCreateUserSuccess(`✅ Usuário ${data.user.email} criado com sucesso!`);
+                setCreateUserDialog({
+                    isOpen: false,
+                    email: '',
+                    name: '',
+                    clinicName: '',
+                    password: '',
+                    confirmPassword: ''
+                });
+                
+                // Atualizar lista de usuários
+                await fetchUsers();
+                
+                setTimeout(() => setCreateUserSuccess(null), 3000);
+            } else {
+                const errorMsg = data.error || 'Erro ao criar usuário';
+                const detailsMsg = data.details ? `\n\n${data.details}` : '';
+                setCreateUserSuccess(`❌ Erro: ${errorMsg}${detailsMsg}`);
+            }
+        } catch (err: any) {
+            console.error('Erro ao criar usuário:', err);
+            setCreateUserSuccess(`❌ Erro: ${err.message || 'Erro ao criar usuário'}`);
+        } finally {
+            setCreateUserLoading(false);
+        }
+    };
+
     const filteredUsers = users.filter(user =>
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,8 +385,8 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                 <div className="flex-1 overflow-hidden flex">
                     {/* Left Panel - Users List */}
                     <div className="w-1/2 border-r border-slate-200 flex flex-col">
-                        {/* Search */}
-                        <div className="p-4 border-b border-slate-200">
+                        {/* Search and Add User */}
+                        <div className="p-4 border-b border-slate-200 space-y-3">
                             <div className="relative">
                                 <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                                 <input
@@ -163,6 +397,13 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                     className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
+                            <button
+                                onClick={handleCreateUser}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <UserPlus className="w-4 h-4" />
+                                Adicionar Usuário
+                            </button>
                         </div>
 
                         {/* Users List */}
@@ -286,24 +527,59 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                                 Informações do Usuário
                                             </h3>
                                             {userData.user ? (
-                                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                                    <div>
-                                                        <span className="text-slate-500">Nome:</span>
-                                                        <p className="text-slate-900 font-semibold">{userData.user.name}</p>
+                                                <div className="space-y-4">
+                                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                                        <div>
+                                                            <span className="text-slate-500">Nome:</span>
+                                                            <p className="text-slate-900 font-semibold">{userData.user.name}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-500">Email:</span>
+                                                            <p className="text-slate-900 font-semibold">{userData.user.email}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-500">Clínica:</span>
+                                                            <p className="text-slate-900 font-semibold">{userData.user.clinicName}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-500">Criado em:</span>
+                                                            <p className="text-slate-900 font-semibold">
+                                                                {new Date(userData.user.createdAt).toLocaleDateString('pt-BR')}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <span className="text-slate-500">Email:</span>
-                                                        <p className="text-slate-900 font-semibold">{userData.user.email}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-slate-500">Clínica:</span>
-                                                        <p className="text-slate-900 font-semibold">{userData.user.clinicName}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-slate-500">Criado em:</span>
-                                                        <p className="text-slate-900 font-semibold">
-                                                            {new Date(userData.user.createdAt).toLocaleDateString('pt-BR')}
-                                                        </p>
+                                                    {/* Action Buttons */}
+                                                    <div className="flex gap-2 pt-2 border-t border-indigo-200">
+                                                        <button
+                                                            onClick={() => handleResetPassword(userData.user ? {
+                                                                id: userData.user.id,
+                                                                email: userData.user.email,
+                                                                name: userData.user.name,
+                                                                clinicName: userData.user.clinicName,
+                                                                createdAt: userData.user.createdAt,
+                                                                lastSignIn: null,
+                                                                emailConfirmed: true
+                                                            } : users.find(u => u.id === selectedUserId)!)}
+                                                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                                        >
+                                                            <Key className="w-4 h-4" />
+                                                            Resetar Senha
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteUser(userData.user ? {
+                                                                id: userData.user.id,
+                                                                email: userData.user.email,
+                                                                name: userData.user.name,
+                                                                clinicName: userData.user.clinicName,
+                                                                createdAt: userData.user.createdAt,
+                                                                lastSignIn: null,
+                                                                emailConfirmed: true
+                                                            } : users.find(u => u.id === selectedUserId)!)}
+                                                            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                            Deletar
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -382,6 +658,225 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                     </div>
                 </div>
             </div>
+
+            {/* Reset Password Dialog */}
+            {resetPasswordDialog.isOpen && resetPasswordDialog.user && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md border border-slate-200">
+                        <div className="p-4 border-b border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-900">Resetar Senha</h3>
+                            <p className="text-sm text-slate-500 mt-1">{resetPasswordDialog.user.email}</p>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Nova Senha</label>
+                                <input
+                                    type="password"
+                                    value={resetPasswordDialog.newPassword}
+                                    onChange={(e) => setResetPasswordDialog({
+                                        ...resetPasswordDialog,
+                                        newPassword: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Mínimo 6 caracteres"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Senha</label>
+                                <input
+                                    type="password"
+                                    value={resetPasswordDialog.confirmPassword}
+                                    onChange={(e) => setResetPasswordDialog({
+                                        ...resetPasswordDialog,
+                                        confirmPassword: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Digite a senha novamente"
+                                />
+                            </div>
+                            {resetSuccess && (
+                                <div className={`p-3 rounded-lg text-sm whitespace-pre-line ${
+                                    resetSuccess.startsWith('✅') 
+                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                    {resetSuccess}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 flex gap-2 justify-end">
+                            <button
+                                onClick={() => setResetPasswordDialog({
+                                    isOpen: false,
+                                    user: null,
+                                    newPassword: '',
+                                    confirmPassword: ''
+                                })}
+                                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
+                                disabled={resetLoading}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmResetPassword}
+                                disabled={resetLoading || !resetPasswordDialog.newPassword}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {resetLoading ? 'Resetando...' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete User Dialog */}
+            {deleteDialog.isOpen && deleteDialog.user && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md border border-slate-200">
+                        <div className="p-4 border-b border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-900">Deletar Usuário</h3>
+                            <p className="text-sm text-slate-500 mt-1">Esta ação não pode ser desfeita</p>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-sm text-slate-700 mb-4">
+                                Tem certeza que deseja deletar o usuário <strong>{deleteDialog.user.email}</strong>?
+                            </p>
+                            <p className="text-xs text-rose-600 mb-4">
+                                ⚠️ Todos os dados relacionados serão deletados permanentemente (agendamentos, pacientes, doutores).
+                            </p>
+                        </div>
+                        <div className="p-4 border-t border-slate-200 flex gap-2 justify-end">
+                            <button
+                                onClick={() => setDeleteDialog({
+                                    isOpen: false,
+                                    user: null
+                                })}
+                                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
+                                disabled={deleteLoading}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmDeleteUser}
+                                disabled={deleteLoading}
+                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {deleteLoading ? 'Deletando...' : 'Deletar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create User Dialog */}
+            {createUserDialog.isOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md border border-slate-200 max-h-[90vh] overflow-y-auto">
+                        <div className="p-4 border-b border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-900">Adicionar Usuário</h3>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    value={createUserDialog.email}
+                                    onChange={(e) => setCreateUserDialog({
+                                        ...createUserDialog,
+                                        email: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="usuario@email.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
+                                <input
+                                    type="text"
+                                    value={createUserDialog.name}
+                                    onChange={(e) => setCreateUserDialog({
+                                        ...createUserDialog,
+                                        name: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Clínica (opcional)</label>
+                                <input
+                                    type="text"
+                                    value={createUserDialog.clinicName}
+                                    onChange={(e) => setCreateUserDialog({
+                                        ...createUserDialog,
+                                        clinicName: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Nome da clínica"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+                                <input
+                                    type="password"
+                                    value={createUserDialog.password}
+                                    onChange={(e) => setCreateUserDialog({
+                                        ...createUserDialog,
+                                        password: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Mínimo 6 caracteres"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Senha</label>
+                                <input
+                                    type="password"
+                                    value={createUserDialog.confirmPassword}
+                                    onChange={(e) => setCreateUserDialog({
+                                        ...createUserDialog,
+                                        confirmPassword: e.target.value
+                                    })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Digite a senha novamente"
+                                />
+                            </div>
+                            {createUserSuccess && (
+                                <div className={`p-3 rounded-lg text-sm whitespace-pre-line ${
+                                    createUserSuccess.startsWith('✅') 
+                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                    {createUserSuccess}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 flex gap-2 justify-end">
+                            <button
+                                onClick={() => setCreateUserDialog({
+                                    isOpen: false,
+                                    email: '',
+                                    name: '',
+                                    clinicName: '',
+                                    password: '',
+                                    confirmPassword: ''
+                                })}
+                                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
+                                disabled={createUserLoading}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmCreateUser}
+                                disabled={createUserLoading || !createUserDialog.email || !createUserDialog.name || !createUserDialog.password}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {createUserLoading ? 'Criando...' : 'Criar Usuário'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
