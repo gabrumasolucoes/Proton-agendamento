@@ -4,8 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, Users, Mail, Building2, Calendar, UserPlus, Shield, Search, ChevronDown, ChevronRight, Phone, Activity, Clock, Key, Trash2 } from 'lucide-react';
-import { User } from '../types';
+import { X, Users, Mail, Building2, Calendar, UserPlus, Shield, Search, ChevronDown, ChevronRight, Phone, Activity, Clock, Key, Trash2, Eye, Calendar as CalendarIcon, BarChart2, ArrowLeft } from 'lucide-react';
+import { User, Appointment as AppointmentType, Patient as PatientType, CalendarViewMode } from '../types';
+import { CalendarGrid } from './CalendarGrid';
+import { PatientsView } from './PatientsView';
+import { ReportsView } from './ReportsView';
+import { apiData } from '../services/api';
+import { subDays, addDays, subWeeks, addWeeks, subMonths, addMonths } from 'date-fns';
 
 interface UsersManagementModalProps {
     isOpen: boolean;
@@ -88,6 +93,14 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
     });
     const [createUserLoading, setCreateUserLoading] = useState(false);
     const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'details' | 'mirror'>('details');
+    const [mirrorView, setMirrorView] = useState<'calendar' | 'patients' | 'reports'>('calendar');
+    const [mirrorAppointments, setMirrorAppointments] = useState<AppointmentType[]>([]);
+    const [mirrorPatients, setMirrorPatients] = useState<PatientType[]>([]);
+    const [mirrorDoctors, setMirrorDoctors] = useState<any[]>([]);
+    const [mirrorLoading, setMirrorLoading] = useState(false);
+    const [mirrorCurrentDate, setMirrorCurrentDate] = useState(new Date());
+    const [mirrorViewMode, setMirrorViewMode] = useState<CalendarViewMode>('week');
 
     useEffect(() => {
         if (isOpen && currentUser?.isAdmin) {
@@ -139,10 +152,40 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         if (selectedUserId === userId) {
             setSelectedUserId(null);
             setUserData(null);
+            setViewMode('details');
         } else {
             setSelectedUserId(userId);
+            setViewMode('details');
             fetchUserData(userId);
         }
+    };
+
+    // Carregar dados para visualização espelho
+    const loadMirrorData = async (userId: string) => {
+        setMirrorLoading(true);
+        try {
+            // Carregar agendamentos, pacientes e doutores do usuário
+            const [appointments, patients, doctors] = await Promise.all([
+                apiData.getAppointments(userId, false),
+                apiData.getPatients(userId, false),
+                apiData.getDoctors(userId, false)
+            ]);
+
+            setMirrorAppointments(appointments);
+            setMirrorPatients(patients);
+            setMirrorDoctors(doctors);
+        } catch (err: any) {
+            console.error('Erro ao carregar dados do espelho:', err);
+            setError(err.message || 'Erro ao carregar dados do usuário');
+        } finally {
+            setMirrorLoading(false);
+        }
+    };
+
+    const handleViewAsUser = async (userId: string) => {
+        setViewMode('mirror');
+        setSelectedUserId(userId);
+        await loadMirrorData(userId);
     };
 
     const toggleUserExpand = (userId: string) => {
@@ -510,82 +553,244 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                         </div>
                     </div>
 
-                    {/* Right Panel - User Details */}
+                    {/* Right Panel - User Details or Mirror View */}
                     <div className="w-1/2 flex flex-col">
                         {selectedUserId ? (
                             <>
-                                {loadingUserData ? (
-                                    <div className="flex-1 flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                    </div>
-                                ) : userData ? (
-                                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                        {/* User Info */}
-                                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100">
-                                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
-                                                <Users className="w-5 h-5 text-indigo-600" />
-                                                Informações do Usuário
-                                            </h3>
-                                            {userData.user ? (
-                                                <div className="space-y-4">
-                                                    <div className="grid grid-cols-2 gap-3 text-sm">
-                                                        <div>
-                                                            <span className="text-slate-500">Nome:</span>
-                                                            <p className="text-slate-900 font-semibold">{userData.user.name}</p>
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-slate-500">Email:</span>
-                                                            <p className="text-slate-900 font-semibold">{userData.user.email}</p>
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-slate-500">Clínica:</span>
-                                                            <p className="text-slate-900 font-semibold">{userData.user.clinicName}</p>
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-slate-500">Criado em:</span>
-                                                            <p className="text-slate-900 font-semibold">
-                                                                {new Date(userData.user.createdAt).toLocaleDateString('pt-BR')}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    {/* Action Buttons */}
-                                                    <div className="flex gap-2 pt-2 border-t border-indigo-200">
-                                                        <button
-                                                            onClick={() => handleResetPassword(userData.user ? {
-                                                                id: userData.user.id,
-                                                                email: userData.user.email,
-                                                                name: userData.user.name,
-                                                                clinicName: userData.user.clinicName,
-                                                                createdAt: userData.user.createdAt,
-                                                                lastSignIn: null,
-                                                                emailConfirmed: true
-                                                            } : users.find(u => u.id === selectedUserId)!)}
-                                                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
-                                                        >
-                                                            <Key className="w-4 h-4" />
-                                                            Resetar Senha
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteUser(userData.user ? {
-                                                                id: userData.user.id,
-                                                                email: userData.user.email,
-                                                                name: userData.user.name,
-                                                                clinicName: userData.user.clinicName,
-                                                                createdAt: userData.user.createdAt,
-                                                                lastSignIn: null,
-                                                                emailConfirmed: true
-                                                            } : users.find(u => u.id === selectedUserId)!)}
-                                                            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Deletar
-                                                        </button>
-                                                    </div>
+                                {viewMode === 'mirror' ? (
+                                    /* Mirror View - Ver como usuário vê */
+                                    <div className="flex-1 flex flex-col bg-slate-50">
+                                        {/* Header do Mirror */}
+                                        <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => setViewMode('details')}
+                                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                                >
+                                                    <ArrowLeft className="w-5 h-5 text-slate-600" />
+                                                </button>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                                        <Eye className="w-5 h-5 text-indigo-600" />
+                                                        Visualizando como: {userData?.user?.email || users.find(u => u.id === selectedUserId)?.email}
+                                                    </h3>
+                                                    <p className="text-xs text-slate-500">Modo espelho - apenas visualização</p>
+                                                </div>
+                                            </div>
+                                            {/* Navigation Tabs */}
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setMirrorView('calendar')}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                                                        mirrorView === 'calendar'
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                                    }`}
+                                                >
+                                                    <CalendarIcon className="w-4 h-4" />
+                                                    Agenda
+                                                </button>
+                                                <button
+                                                    onClick={() => setMirrorView('patients')}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                                                        mirrorView === 'patients'
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                                    }`}
+                                                >
+                                                    <Users className="w-4 h-4" />
+                                                    Pacientes
+                                                </button>
+                                                <button
+                                                    onClick={() => setMirrorView('reports')}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                                                        mirrorView === 'reports'
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                                    }`}
+                                                >
+                                                    <BarChart2 className="w-4 h-4" />
+                                                    Relatórios
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Mirror Content */}
+                                        <div className="flex-1 overflow-y-auto">
+                                            {mirrorLoading ? (
+                                                <div className="flex items-center justify-center h-full">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                                                 </div>
                                             ) : (
-                                                <p className="text-slate-500 text-sm">Perfil não encontrado</p>
+                                                <>
+                                                    {mirrorView === 'calendar' && (
+                                                        <div className="p-4">
+                                                            {/* Calendar Controls */}
+                                                            <div className="mb-4 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <select
+                                                                        value={mirrorViewMode}
+                                                                        onChange={(e) => setMirrorViewMode(e.target.value as CalendarViewMode)}
+                                                                        className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                    >
+                                                                        <option value="day">Dia</option>
+                                                                        <option value="week">Semana</option>
+                                                                        <option value="month">Mês</option>
+                                                                    </select>
+                                                                    <button
+                                                                        onClick={() => setMirrorCurrentDate(new Date())}
+                                                                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm transition-colors"
+                                                                    >
+                                                                        Hoje
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            let prev: Date;
+                                                                            if (mirrorViewMode === 'day') {
+                                                                                prev = subDays(mirrorCurrentDate, 1);
+                                                                            } else if (mirrorViewMode === 'week') {
+                                                                                prev = subWeeks(mirrorCurrentDate, 1);
+                                                                            } else {
+                                                                                prev = subMonths(mirrorCurrentDate, 1);
+                                                                            }
+                                                                            setMirrorCurrentDate(prev);
+                                                                        }}
+                                                                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm transition-colors"
+                                                                    >
+                                                                        ‹
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            let next: Date;
+                                                                            if (mirrorViewMode === 'day') {
+                                                                                next = addDays(mirrorCurrentDate, 1);
+                                                                            } else if (mirrorViewMode === 'week') {
+                                                                                next = addWeeks(mirrorCurrentDate, 1);
+                                                                            } else {
+                                                                                next = addMonths(mirrorCurrentDate, 1);
+                                                                            }
+                                                                            setMirrorCurrentDate(next);
+                                                                        }}
+                                                                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm transition-colors"
+                                                                    >
+                                                                        ›
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <CalendarGrid
+                                                                currentDate={mirrorCurrentDate}
+                                                                viewMode={mirrorViewMode}
+                                                                appointments={mirrorAppointments}
+                                                                onSelectAppointment={() => {}}
+                                                                searchTerm=""
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {mirrorView === 'patients' && (
+                                                        <div className="p-4">
+                                                            <PatientsView
+                                                                patients={mirrorPatients}
+                                                                appointments={mirrorAppointments}
+                                                                searchTerm=""
+                                                                onSearchChange={() => {}}
+                                                                onAddPatient={() => {}}
+                                                                onUpdatePatient={() => {}}
+                                                                onDeletePatient={() => {}}
+                                                                onCreateAppointment={() => {}}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {mirrorView === 'reports' && (
+                                                        <div className="p-4">
+                                                            <ReportsView appointments={mirrorAppointments} />
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
+                                    </div>
+                                ) : (
+                                    /* Details View - Informações e ações */
+                                    <>
+                                        {loadingUserData ? (
+                                            <div className="flex-1 flex items-center justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                            </div>
+                                        ) : userData ? (
+                                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                                {/* User Info */}
+                                                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100">
+                                                    <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                                        <Users className="w-5 h-5 text-indigo-600" />
+                                                        Informações do Usuário
+                                                    </h3>
+                                                    {userData.user ? (
+                                                        <div className="space-y-4">
+                                                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                                                <div>
+                                                                    <span className="text-slate-500">Nome:</span>
+                                                                    <p className="text-slate-900 font-semibold">{userData.user.name}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-slate-500">Email:</span>
+                                                                    <p className="text-slate-900 font-semibold">{userData.user.email}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-slate-500">Clínica:</span>
+                                                                    <p className="text-slate-900 font-semibold">{userData.user.clinicName}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-slate-500">Criado em:</span>
+                                                                    <p className="text-slate-900 font-semibold">
+                                                                        {new Date(userData.user.createdAt).toLocaleDateString('pt-BR')}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            {/* Action Buttons */}
+                                                            <div className="flex gap-2 pt-2 border-t border-indigo-200">
+                                                                <button
+                                                                    onClick={() => handleViewAsUser(userData.user!.id)}
+                                                                    className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                    Ver como usuário
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleResetPassword(userData.user ? {
+                                                                        id: userData.user.id,
+                                                                        email: userData.user.email,
+                                                                        name: userData.user.name,
+                                                                        clinicName: userData.user.clinicName,
+                                                                        createdAt: userData.user.createdAt,
+                                                                        lastSignIn: null,
+                                                                        emailConfirmed: true
+                                                                    } : users.find(u => u.id === selectedUserId)!)}
+                                                                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                                                >
+                                                                    <Key className="w-4 h-4" />
+                                                                    Resetar Senha
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteUser(userData.user ? {
+                                                                        id: userData.user.id,
+                                                                        email: userData.user.email,
+                                                                        name: userData.user.name,
+                                                                        clinicName: userData.user.clinicName,
+                                                                        createdAt: userData.user.createdAt,
+                                                                        lastSignIn: null,
+                                                                        emailConfirmed: true
+                                                                    } : users.find(u => u.id === selectedUserId)!)}
+                                                                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                    Deletar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-slate-500 text-sm">Perfil não encontrado</p>
+                                                    )}
+                                                </div>
 
                                         {/* Stats */}
                                         <div className="grid grid-cols-3 gap-4">
