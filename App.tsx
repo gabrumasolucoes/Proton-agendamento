@@ -109,9 +109,18 @@ const App: React.FC = () => {
               doctors: docs.length 
           });
 
+          console.log('[loadData] Dados recebidos da API:', { 
+              appointments: apts.length, 
+              patients: pts.length, 
+              doctors: docs.length,
+              targetUserId
+          });
+
           setAppointments(apts);
           setPatients(pts);
           
+          // Em mirror mode, sempre usar os doctors recebidos da API
+          // Não criar doctor automaticamente em mirror mode
           if (docs.length === 0 && !isDemo && !mirrorMode.isActive) {
                // Create initial doctor if none exists for new user (apenas se não estiver em mirror mode)
                const newDoc = await apiData.saveDoctor({
@@ -124,6 +133,12 @@ const App: React.FC = () => {
           } else {
               setDoctors(docs);
           }
+
+          console.log('[loadData] Estado atualizado:', { 
+              appointmentsCount: apts.length, 
+              patientsCount: pts.length, 
+              doctorsCount: docs.length 
+          });
 
           setNotifications(isDemo ? MOCK_NOTIFICATIONS : []);
       } catch (e) {
@@ -360,10 +375,32 @@ const App: React.FC = () => {
   };
 
   const filteredAppointments = appointments.filter(apt => {
+      // Se não houver doctorId no agendamento, sempre mostrar
+      if (!apt.doctorId) return true;
+      
+      // Se houver doctorId, verificar se o médico existe e está ativo
       const doctor = doctors.find(d => d.id === apt.doctorId);
+      
+      // Se o médico não existir na lista, ainda mostrar o agendamento (pode ter sido deletado)
+      if (!doctor) return true;
+      
+      // Só filtrar se o médico existir e estiver inativo
       if (doctor && !doctor.active) return false;
+      
       return true;
   });
+
+  // Debug: Log dos agendamentos filtrados
+  useEffect(() => {
+      if (mirrorMode.isActive) {
+          console.log('[filteredAppointments] Mirror mode ativo:', {
+              totalAppointments: appointments.length,
+              filteredAppointments: filteredAppointments.length,
+              doctorsCount: doctors.length,
+              doctors: doctors.map(d => ({ id: d.id, name: d.name, active: d.active }))
+          });
+      }
+  }, [appointments, filteredAppointments, doctors, mirrorMode.isActive]);
 
   const renderContent = () => {
       switch (currentView) {
