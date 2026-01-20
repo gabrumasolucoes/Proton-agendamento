@@ -97,24 +97,59 @@ const App: React.FC = () => {
               targetUserId 
           });
 
-          const [apts, pts, docs] = await Promise.all([
-              apiData.getAppointments(targetUserId, isDemo),
-              apiData.getPatients(targetUserId, isDemo),
-              apiData.getDoctors(targetUserId, isDemo)
-          ]);
+          let apts: Appointment[] = [];
+          let pts: Patient[] = [];
+          let docs: DoctorProfile[] = [];
 
-          console.log('[loadData] Dados carregados:', { 
-              appointments: apts.length, 
-              patients: pts.length, 
-              doctors: docs.length 
-          });
-
-          console.log('[loadData] Dados recebidos da API:', { 
-              appointments: apts.length, 
-              patients: pts.length, 
-              doctors: docs.length,
-              targetUserId
-          });
+          // Se estiver em mirror mode, usar endpoint admin que bypassa RLS
+          if (mirrorMode.isActive && mirrorMode.userId && user?.isAdmin) {
+              console.log('[loadData] Usando endpoint admin para mirror mode');
+              try {
+                  const response = await fetch(`/api/get-user-data?userId=${targetUserId}`);
+                  const data = await response.json();
+                  
+                  if (data.success) {
+                      // Converter dados do formato backend para formato frontend
+                      apts = (data.appointments || []).map((apt: any) => ({
+                          ...apt,
+                          patientId: apt.patient_id,
+                          patientName: apt.patient_name,
+                          doctorId: apt.doctor_id,
+                          start: new Date(apt.start_time),
+                          end: new Date(apt.end_time),
+                      }));
+                      pts = (data.patients || []) as Patient[];
+                      docs = (data.doctors || []) as DoctorProfile[];
+                      
+                      console.log('[loadData] Dados carregados via admin endpoint:', { 
+                          appointments: apts.length, 
+                          patients: pts.length, 
+                          doctors: docs.length 
+                      });
+                  } else {
+                      console.error('[loadData] Erro ao carregar dados via admin endpoint:', data.error);
+                  }
+              } catch (error) {
+                  console.error('[loadData] Erro ao chamar endpoint admin:', error);
+              }
+          } else {
+              // Usar métodos normais do apiData (para usuários normais)
+              const results = await Promise.all([
+                  apiData.getAppointments(targetUserId, isDemo),
+                  apiData.getPatients(targetUserId, isDemo),
+                  apiData.getDoctors(targetUserId, isDemo)
+              ]);
+              
+              apts = results[0];
+              pts = results[1];
+              docs = results[2];
+              
+              console.log('[loadData] Dados carregados via apiData:', { 
+                  appointments: apts.length, 
+                  patients: pts.length, 
+                  doctors: docs.length 
+              });
+          }
 
           setAppointments(apts);
           setPatients(pts);
