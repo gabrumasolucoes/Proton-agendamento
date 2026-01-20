@@ -851,6 +851,8 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                         Erro ao carregar dados do usuário
                                     </div>
                                 )}
+                                    </>
+                                )}
                             </>
                         ) : (
                             <div className="flex-1 flex items-center justify-center text-slate-400">
