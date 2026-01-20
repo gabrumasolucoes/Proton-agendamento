@@ -640,6 +640,10 @@ const App: React.FC = () => {
             doctors={doctors}
             onAddDoctor={handleAddDoctor}
             onRemoveDoctor={handleRemoveDoctor}
+            currentUser={user}
+            onUserUpdate={(updatedUser) => {
+              setUser(updatedUser);
+            }}
           />
       )}
 

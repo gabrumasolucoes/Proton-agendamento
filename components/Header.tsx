@@ -271,7 +271,11 @@ export const Header: React.FC<HeaderProps> = ({
                         </button>
                         
                         <button 
-                            onClick={() => window.open('mailto:suporte@clinical.ai', '_blank')}
+                            onClick={() => {
+                                const whatsappNumber = '554396368352'; // +55 43 9636-8352 sem formatação
+                                const whatsappUrl = `https://wa.me/${whatsappNumber}`;
+                                window.open(whatsappUrl, '_blank');
+                            }}
                             className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors group text-left"
                         >
                             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">

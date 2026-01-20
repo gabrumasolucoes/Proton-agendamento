@@ -63,6 +63,34 @@ export const apiAuth = {
       name: profile?.name || session.user.user_metadata?.name || 'Usuário',
       clinicName: profile?.clinic_name || session.user.user_metadata?.clinic_name || 'Minha Clínica'
     } as User;
+  },
+
+  async updateProfile(userId: string, name: string, clinicName: string) {
+    // Atualizar perfil na tabela profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ 
+        id: userId, 
+        name, 
+        clinic_name: clinicName
+      }, { onConflict: 'id' });
+
+    if (profileError) {
+      console.error('Error updating profile:', profileError);
+      return { error: profileError };
+    }
+
+    // Atualizar metadata do usuário no auth (opcional, para sincronização)
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { name, clinic_name: clinicName }
+    });
+
+    if (authError) {
+      console.error('Warning updating auth metadata:', authError);
+      // Não retornar erro aqui, pois o perfil já foi atualizado
+    }
+
+    return { error: null };
   }
 };
 

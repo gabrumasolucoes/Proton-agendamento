@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
-import { X, UserPlus, Check, Trash2, Shield } from 'lucide-react';
-import { DoctorProfile } from '../types';
+import React, { useState, useEffect } from 'react';
+import { X, UserPlus, Check, Trash2, Shield, User, Building2, Save } from 'lucide-react';
+import { DoctorProfile, User } from '../types';
+import { apiAuth } from '../services/api';
 
 interface SettingsModalProps {
   onClose: () => void;
   doctors: DoctorProfile[];
   onAddDoctor: (doctor: Omit<DoctorProfile, 'id' | 'active'>) => void;
   onRemoveDoctor: (id: string) => void;
+  currentUser: User | null;
+  onUserUpdate?: (user: User) => void;
 }
 
 const PRESET_COLORS = [
@@ -18,11 +21,31 @@ const PRESET_COLORS = [
   { label: 'Laranja', value: '#f97316' },
 ];
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, doctors, onAddDoctor, onRemoveDoctor }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ 
+  onClose, 
+  doctors, 
+  onAddDoctor, 
+  onRemoveDoctor,
+  currentUser,
+  onUserUpdate
+}) => {
   const [activeTab, setActiveTab] = useState<'doctors' | 'account'>('doctors');
   const [newDocName, setNewDocName] = useState('');
   const [newDocRole, setNewDocRole] = useState('');
   const [newDocColor, setNewDocColor] = useState(PRESET_COLORS[0].value);
+  
+  // Account settings state
+  const [userName, setUserName] = useState(currentUser?.name || '');
+  const [userClinic, setUserClinic] = useState(currentUser?.clinicName || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      setUserName(currentUser.name || '');
+      setUserClinic(currentUser.clinicName || '');
+    }
+  }, [currentUser]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +58,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, doctors, 
       setNewDocName('');
       setNewDocRole('');
       setNewDocColor(PRESET_COLORS[0].value);
+    }
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const { error } = await apiAuth.updateProfile(
+        currentUser.id,
+        userName.trim(),
+        userClinic.trim()
+      );
+
+      if (error) {
+        setSaveMessage({ type: 'error', text: 'Erro ao atualizar perfil. Tente novamente.' });
+      } else {
+        setSaveMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
+        
+        // Atualizar usuário no contexto se callback estiver disponível
+        if (onUserUpdate) {
+          onUserUpdate({
+            ...currentUser,
+            name: userName.trim(),
+            clinicName: userClinic.trim()
+          });
+        }
+
+        // Limpar mensagem após 3 segundos
+        setTimeout(() => setSaveMessage(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setSaveMessage({ type: 'error', text: 'Erro ao atualizar perfil. Tente novamente.' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -162,9 +224,82 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, doctors, 
                 )}
                 
                 {activeTab === 'account' && (
-                    <div className="text-center py-10 text-slate-400">
-                        <Shield className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                        <p>Configurações de conta não disponíveis nesta demo.</p>
+                    <div className="space-y-6 max-w-md">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-800 mb-1">Informações da Conta</h3>
+                            <p className="text-sm text-slate-500 mb-6">Atualize suas informações pessoais e da clínica.</p>
+                            
+                            <form onSubmit={handleSaveProfile} className="space-y-6">
+                                {/* Email (read-only) */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-2">
+                                        <User className="w-4 h-4 inline mr-1" />
+                                        Email
+                                    </label>
+                                    <input 
+                                        type="email" 
+                                        value={currentUser?.email || ''}
+                                        disabled
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1">O email não pode ser alterado.</p>
+                                </div>
+
+                                {/* Nome */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-2">
+                                        Nome Completo
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={userName}
+                                        onChange={(e) => setUserName(e.target.value)}
+                                        placeholder="Seu nome completo"
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Clínica */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-2">
+                                        <Building2 className="w-4 h-4 inline mr-1" />
+                                        Nome da Clínica
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={userClinic}
+                                        onChange={(e) => setUserClinic(e.target.value)}
+                                        placeholder="Nome da sua clínica"
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Mensagem de feedback */}
+                                {saveMessage && (
+                                    <div className={`p-3 rounded-lg text-sm ${
+                                        saveMessage.type === 'success' 
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    }`}>
+                                        {saveMessage.text}
+                                    </div>
+                                )}
+
+                                {/* Botão Salvar */}
+                                <div className="flex justify-end pt-2 border-t border-slate-100">
+                                    <button 
+                                        type="submit"
+                                        disabled={isSaving || !userName.trim() || !userClinic.trim()}
+                                        className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
             </div>
