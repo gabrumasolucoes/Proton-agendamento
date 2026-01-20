@@ -86,14 +86,28 @@ const App: React.FC = () => {
               return;
           }
 
-          // Se estiver em mirror mode, usar userId do mirror
+          // Se estiver em mirror mode, SEMPRE usar userId do mirror (ignorar parâmetro userId)
+          // Caso contrário, usar o userId passado como parâmetro
           const targetUserId = mirrorMode.isActive && mirrorMode.userId ? mirrorMode.userId : userId;
+
+          console.log('[loadData] Carregando dados:', { 
+              userId, 
+              mirrorMode: mirrorMode.isActive, 
+              mirrorUserId: mirrorMode.userId, 
+              targetUserId 
+          });
 
           const [apts, pts, docs] = await Promise.all([
               apiData.getAppointments(targetUserId, isDemo),
               apiData.getPatients(targetUserId, isDemo),
               apiData.getDoctors(targetUserId, isDemo)
           ]);
+
+          console.log('[loadData] Dados carregados:', { 
+              appointments: apts.length, 
+              patients: pts.length, 
+              doctors: docs.length 
+          });
 
           setAppointments(apts);
           setPatients(pts);
@@ -426,15 +440,20 @@ const App: React.FC = () => {
   // Recarregar dados quando mirror mode mudar
   useEffect(() => {
       if (mirrorMode.isActive && mirrorMode.userId && user) {
+          console.log('[useEffect] Mirror mode ativado, carregando dados do usuário:', mirrorMode.userId);
+          // Quando entrar no mirror mode, carregar dados do usuário visualizado
+          // Passamos o mirrorMode.userId explicitamente para garantir que seja usado
           loadData(mirrorMode.userId, false);
       } else if (!mirrorMode.isActive && user?.isAdmin && user.id === 'proton_admin_master') {
+          console.log('[useEffect] Saindo do mirror mode, limpando dados');
           // Se sair do mirror mode e for admin, limpar dados
           setAppointments([]);
           setPatients([]);
           setDoctors([]);
           setNotifications([]);
       }
-  }, [mirrorMode.isActive, mirrorMode.userId]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mirrorMode.isActive, mirrorMode.userId, user?.id]);
 
   if (loading) {
       return (
