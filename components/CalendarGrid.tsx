@@ -14,7 +14,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { Appointment, CalendarViewMode } from '../types';
 import { HOURS_OF_OPERATION } from '../constants';
-import { Sparkles, Clock, MoreHorizontal, MessageCircle } from 'lucide-react';
+import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle } from 'lucide-react';
 
 interface CalendarGridProps {
   currentDate: Date;
@@ -163,9 +163,10 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                               className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate flex items-center gap-1 transition-all ${cardClasses} ${matches ? 'opacity-100' : 'opacity-20'} ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
                                           >
                                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${borderAccent.replace('bg-', 'bg-')}`}></div>
-                                              <span className={`font-medium truncate ${textClasses}`}>
+                                              <span className={`font-medium truncate flex-1 min-w-0 ${textClasses}`}>
                                                   {format(apt.start, 'HH:mm')} {apt.patientName}
                                               </span>
+                                              {apt.confirmedAt && <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" aria-label="Paciente confirmou" />}
                                           </button>
                                       );
                                   })}
@@ -293,11 +294,16 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                                 <Clock className="w-2.5 h-2.5" />
                                                                 {format(apt.start, 'HH:mm')}
                                                             </span>
-                                                            {apt.source === 'chatbot' && (
-                                                                <div className="bg-white/50 rounded-full p-0.5 shadow-sm">
-                                                                    <MessageCircle className="w-2.5 h-2.5 text-indigo-500" />
-                                                                </div>
-                                                            )}
+                                                            <span className="flex items-center gap-1">
+                                                                {apt.source === 'chatbot' && (
+                                                                    <div className="bg-white/50 rounded-full p-0.5 shadow-sm">
+                                                                        <MessageCircle className="w-2.5 h-2.5 text-indigo-500" />
+                                                                    </div>
+                                                                )}
+                                                                {apt.confirmedAt && (
+                                                                    <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" title="Paciente confirmou pelo link" />
+                                                                )}
+                                                            </span>
                                                         </div>
                                                         
                                                         <div className={`text-[13px] font-bold leading-tight mb-0.5 truncate flex-shrink-0 ${textClasses}`}>
