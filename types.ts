@@ -47,8 +47,10 @@ export interface Appointment {
   notes: string; // Notes from the Chatbot interaction
   source: 'chatbot' | 'manual';
   tags?: string[]; // Array of associated tags
-  /** Data/hora em que o paciente confirmou pelo link de confirmação (ISO) */
+  /** Data/hora em que o cliente confirmou pelo link de confirmação (ISO) */
   confirmedAt?: string | null;
+  /** Data/hora em que o cliente cancelou pelo link (ISO). Null se não cancelado pelo cliente. */
+  cancelledAt?: string | null;
 }
 
 export interface AiAnalysisResult {

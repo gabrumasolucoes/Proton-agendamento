@@ -111,12 +111,14 @@ async function updateAppointmentStatus(token, action) {
     // Determinar novo status
     let newStatus;
     let confirmedAt = null;
+    let cancelledAt = null;
 
     if (action === 'confirm') {
         newStatus = 'confirmed';
         confirmedAt = new Date().toISOString();
     } else if (action === 'cancel') {
         newStatus = 'cancelled';
+        cancelledAt = new Date().toISOString();
     } else {
         return { success: false, error: 'Ação inválida. Use "confirm" ou "cancel"' };
     }
@@ -128,6 +130,9 @@ async function updateAppointmentStatus(token, action) {
 
     if (confirmedAt) {
         updateData.confirmed_at = confirmedAt;
+    }
+    if (cancelledAt) {
+        updateData.cancelled_at = cancelledAt;
     }
 
     const { error: updateError } = await supabase

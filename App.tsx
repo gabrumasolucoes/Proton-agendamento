@@ -15,7 +15,8 @@ import { AutoLoginHandler } from './components/AutoLoginHandler';
 import { UsersManagementModal } from './components/UsersManagementModal';
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
-import { apiData, apiAuth } from './services/api';
+import { apiData, apiAuth, apiAgendaBlocks } from './services/api';
+import type { AgendaBlock } from './services/api';
 import { ensureSupabase } from './lib/supabase';
 
 const App: React.FC = () => {
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   
   // State for tags
   const [tags, setTags] = useState<ProcedureTag[]>(DEFAULT_TAGS);
+  const [agendaBlocks, setAgendaBlocks] = useState<AgendaBlock[]>([]);
 
   // --- Auth & Data Loading Logic ---
 
@@ -101,7 +103,7 @@ const App: React.FC = () => {
       const more = recent.length > 3 ? ` e mais ${recent.length - 3}` : '';
       setNotifications(prev => [{
         id: 'confirmation-' + Date.now(),
-        title: 'Pacientes confirmaram presença',
+        title: 'Clientes confirmaram presença',
         message: `${names}${more} confirmaram pelo link. Confira na agenda.`,
         time: 'Agora',
         read: false,
@@ -120,6 +122,7 @@ const App: React.FC = () => {
               setAppointments([]);
               setPatients([]);
               setDoctors([]);
+              setAgendaBlocks([]);
               setNotifications([]);
               setLoading(false);
               return;
@@ -142,6 +145,7 @@ const App: React.FC = () => {
 
           // Se estiver em mirror mode, usar endpoint admin que bypassa RLS
           if (mirrorMode.isActive && mirrorMode.userId && user?.isAdmin) {
+              setAgendaBlocks([]); // mirror: RLS impede buscar blocos de outro usuário
               console.log('[loadData] Usando endpoint admin para mirror mode');
               try {
                   const response = await fetch(`/api/get-user-data?userId=${targetUserId}`);
@@ -157,6 +161,7 @@ const App: React.FC = () => {
                           start: new Date(apt.start_time),
                           end: new Date(apt.end_time),
                           confirmedAt: apt.confirmed_at || null,
+                          cancelledAt: apt.cancelled_at || null,
                       }));
                       pts = (data.patients || []) as Patient[];
                       docs = (data.doctors || []) as DoctorProfile[];
@@ -189,6 +194,8 @@ const App: React.FC = () => {
                   patients: pts.length, 
                   doctors: docs.length 
               });
+              const blks = isDemo ? [] : await apiAgendaBlocks.getBlocks(targetUserId);
+              setAgendaBlocks(blks);
           }
 
           setAppointments(apts);
@@ -488,6 +495,7 @@ const App: React.FC = () => {
                     onSelectAppointment={setSelectedAppointment}
                     searchTerm={searchTerm}
                     isReadOnly={mirrorMode.isActive}
+                    agendaBlocks={agendaBlocks}
                 />
               );
           case 'patients':
@@ -691,7 +699,12 @@ const App: React.FC = () => {
 
       {isSettingsOpen && (
           <SettingsModal 
-            onClose={() => setIsSettingsOpen(false)}
+            onClose={() => {
+              setIsSettingsOpen(false);
+              if (user && !isDemoMode && !mirrorMode.isActive) {
+                apiAgendaBlocks.getBlocks(user.id).then(setAgendaBlocks);
+              }
+            }}
             doctors={doctors}
             onAddDoctor={handleAddDoctor}
             onRemoveDoctor={handleRemoveDoctor}

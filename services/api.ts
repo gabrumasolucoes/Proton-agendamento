@@ -123,6 +123,7 @@ export const apiData = {
       start: new Date(apt.start_time),
       end: new Date(apt.end_time),
       confirmedAt: apt.confirmed_at || null,
+      cancelledAt: apt.cancelled_at || null,
     }));
   },
 

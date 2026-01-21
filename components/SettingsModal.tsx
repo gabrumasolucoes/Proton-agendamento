@@ -385,7 +385,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <CalendarOff className="w-4 h-4 text-amber-500" />
                                 Bloquear dias para agendamentos
                             </h3>
-                            <p className="text-sm text-slate-500 mb-4">A IA do SDR e as APIs de agendamento não oferecerão horários nestes dias. O agendamento manual no Proton não é alterado.</p>
+                            <p className="text-sm text-slate-500 mb-4">A IA do Vigil e as APIs de agendamento não oferecerão horários nestes dias. O agendamento manual no Proton não é alterado.</p>
                         </div>
 
                         {blocksLoading ? (

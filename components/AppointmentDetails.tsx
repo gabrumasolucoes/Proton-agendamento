@@ -52,16 +52,21 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
         <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start bg-white sticky top-0 z-10">
           <div>
             <div className="flex items-center gap-2 mb-2">
-                {/* Badge de status: oculto quando status=confirmed E paciente já confirmou pelo link (evita 2 "confirmados") */}
-                {!(appointment.status === 'confirmed' && appointment.confirmedAt) && (
+                {/* Badge curto (Confirmado, Pendente, etc.): oculto quando (confirmed+confirmedAt) ou quando cancelled (usamos o badge longo "Cancelado pelo cliente" em vez do curto) */}
+                {!(appointment.status === 'confirmed' && appointment.confirmedAt) && appointment.status !== 'cancelled' && (
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5 ${statusConfig.bg} ${statusConfig.text}`}>
                         <StatusIcon className="w-3.5 h-3.5" />
                         {statusConfig.label}
                     </span>
                 )}
-                {appointment.confirmedAt && (
+                {appointment.confirmedAt && appointment.status !== 'cancelled' && (
                     <span className="flex items-center text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                        <CheckCircle className="w-3.5 h-3.5 mr-1" /> Confirmado pelo paciente em {format(new Date(appointment.confirmedAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                        <CheckCircle className="w-3.5 h-3.5 mr-1" /> Confirmado pelo cliente em {format(new Date(appointment.confirmedAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                )}
+                {appointment.status === 'cancelled' && (
+                    <span className="flex items-center text-[11px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+                        <X className="w-3.5 h-3.5 mr-1" /> Cancelado pelo cliente{appointment.cancelledAt ? ` em ${format(new Date(appointment.cancelledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}
                     </span>
                 )}
                 {appointment.source === 'chatbot' && (
@@ -112,7 +117,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                          <User className="w-5 h-5" />
                     </div>
                     <div>
-                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Paciente</p>
+                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cliente</p>
                         <p className="text-base font-bold text-slate-800">{appointment.patientName}</p>
                         <p className="text-xs text-slate-500 mt-0.5">ID: {appointment.patientId.slice(0, 6)}</p>
                     </div>

@@ -14,7 +14,8 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { Appointment, CalendarViewMode } from '../types';
 import { HOURS_OF_OPERATION } from '../constants';
-import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle } from 'lucide-react';
+import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle, CalendarOff } from 'lucide-react';
+import type { AgendaBlock } from '../services/api';
 
 interface CalendarGridProps {
   currentDate: Date;
@@ -23,9 +24,25 @@ interface CalendarGridProps {
   onSelectAppointment: (apt: Appointment) => void;
   searchTerm: string;
   isReadOnly?: boolean;
+  agendaBlocks?: AgendaBlock[];
 }
 
-export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMode, appointments, onSelectAppointment, searchTerm, isReadOnly = false }) => {
+function isDayBlocked(day: Date, blocks: AgendaBlock[]): boolean {
+  const active = (blocks || []).filter((b) => b.active);
+  const yyyy = day.getFullYear();
+  const mm = String(day.getMonth() + 1).padStart(2, '0');
+  const dd = String(day.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}-${mm}-${dd}`;
+  const weekday = day.getDay();
+  for (const b of active) {
+    if (b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.includes(weekday)) return true;
+    if (b.block_type === 'specific_date' && b.specific_date === dateStr) return true;
+    if (b.block_type === 'date_range' && b.start_date && b.end_date && dateStr >= b.start_date && dateStr <= b.end_date) return true;
+  }
+  return false;
+}
+
+export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMode, appointments, onSelectAppointment, searchTerm, isReadOnly = false, agendaBlocks }) => {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -127,10 +144,16 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                         .filter(apt => isSameDay(apt.start, day))
                         .sort((a, b) => a.start.getTime() - b.start.getTime());
 
+                      const blocked = isDayBlocked(day, agendaBlocks || []);
                       // Logic for background color of the cell
                       let bgClass = 'bg-white';
-                      if (!isCurrentMonth) bgClass = 'bg-slate-50/50 text-slate-400';
-                      if (isToday) bgClass = 'bg-indigo-50/70 ring-1 ring-inset ring-indigo-200 z-10';
+                      if (blocked) {
+                        bgClass = 'bg-amber-50/70 border border-amber-200/60';
+                      } else if (isToday) {
+                        bgClass = 'bg-indigo-50/70 ring-1 ring-inset ring-indigo-200 z-10';
+                      } else if (!isCurrentMonth) {
+                        bgClass = 'bg-slate-50/50 text-slate-400';
+                      }
 
                       return (
                           <div 
@@ -138,13 +161,15 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                             className={`border-b border-r border-slate-100 p-2 min-h-[100px] flex flex-col relative group transition-colors hover:bg-slate-50 ${bgClass}`}
                           >
                               {/* Today Indicator Line (Top) - Optional extra highlight */}
-                              {isToday && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>}
+                              {isToday && !blocked && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>}
+                              {blocked && <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-300/70" title="Dia bloqueado"></div>}
 
                               <div className="flex justify-between items-start mb-1">
-                                  <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-110' : ''}`}>
+                                  <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all ${isToday && !blocked ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-110' : ''}`}>
                                       {format(day, 'd')}
                                   </span>
-                                  {isToday && <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide mr-1">Hoje</span>}
+                                  {blocked && <CalendarOff className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" title="Dia bloqueado" aria-hidden />}
+                                  {isToday && !blocked && <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide mr-1">Hoje</span>}
                               </div>
                               
                               <div className="flex-1 space-y-1 overflow-hidden mt-1">
@@ -166,7 +191,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                               <span className={`font-medium truncate flex-1 min-w-0 ${textClasses}`}>
                                                   {format(apt.start, 'HH:mm')} {apt.patientName}
                                               </span>
-                                              {apt.confirmedAt && <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" aria-label="Paciente confirmou" />}
+                                              {apt.confirmedAt && <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" aria-label="Cliente confirmou" />}
                                           </button>
                                       );
                                   })}
@@ -200,14 +225,16 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                 <div className="flex-1 flex overflow-hidden">
                 {weekDays.map((day, i) => {
                     const isToday = isSameDay(day, now);
+                    const blocked = isDayBlocked(day, agendaBlocks || []);
                     return (
-                    <div key={i} className={`flex-1 text-center py-4 min-w-[120px] group border-l border-transparent transition-colors rounded-b-xl ${isToday ? 'bg-indigo-50/50' : 'hover:bg-slate-50/50'}`}>
-                        <div className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${isToday ? 'text-indigo-700' : 'text-slate-400'}`}>
+                    <div key={i} className={`flex-1 text-center py-4 min-w-[120px] group border-l border-transparent transition-colors rounded-b-xl ${blocked ? 'bg-amber-50/80' : isToday ? 'bg-indigo-50/50' : 'hover:bg-slate-50/50'}`}>
+                        <div className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${blocked ? 'text-amber-700' : isToday ? 'text-indigo-700' : 'text-slate-400'}`}>
                         {format(day, 'EEE', { locale: ptBR })}
                         </div>
-                        <div className={`text-2xl font-light w-11 h-11 mx-auto flex items-center justify-center rounded-full transition-all duration-300 ${isToday ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-300 scale-110' : 'text-slate-600 group-hover:bg-white group-hover:shadow-sm group-hover:text-slate-900'}`}>
+                        <div className={`text-2xl font-light w-11 h-11 mx-auto flex items-center justify-center rounded-full transition-all duration-300 ${blocked ? 'bg-amber-100 text-amber-800' : isToday ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-300 scale-110' : 'text-slate-600 group-hover:bg-white group-hover:shadow-sm group-hover:text-slate-900'}`}>
                         {format(day, 'd')}
                         </div>
+                        {blocked && <div className="flex justify-center mt-1" title="Dia bloqueado"><CalendarOff className="w-3.5 h-3.5 text-amber-600" /></div>}
                     </div>
                     );
                 })}
@@ -235,13 +262,14 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                         <div className="absolute inset-0 flex">
                             {weekDays.map((day, i) => {
                                 const isToday = isSameDay(day, now);
+                                const blocked = isDayBlocked(day, agendaBlocks || []);
                                 return (
-                                    <div key={i} className={`flex-1 border-l border-slate-100/60 h-full relative ${isToday ? 'bg-indigo-50/40 ring-1 ring-inset ring-indigo-50' : ''}`}>
-                                        {/* Optional top highlight line for today column */}
-                                        {isToday && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-200"></div>}
+                                    <div key={i} className={`flex-1 border-l border-slate-100/60 h-full relative ${blocked ? 'bg-amber-50/50' : isToday ? 'bg-indigo-50/40 ring-1 ring-inset ring-indigo-50' : ''}`}>
+                                        {blocked && <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-300/70" title="Dia bloqueado"></div>}
+                                        {isToday && !blocked && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-200"></div>}
                                         
                                         {hours.map(h => (
-                                            <div key={h} className={`border-b border-dashed w-full ${isToday ? 'border-indigo-100/50' : 'border-slate-100'}`} style={{ height: `${cellHeight}px` }}></div>
+                                            <div key={h} className={`border-b border-dashed w-full ${blocked ? 'border-amber-100/60' : isToday ? 'border-indigo-100/50' : 'border-slate-100'}`} style={{ height: `${cellHeight}px` }}></div>
                                         ))}
                                     </div>
                                 );
@@ -301,7 +329,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                                     </div>
                                                                 )}
                                                                 {apt.confirmedAt && (
-                                                                    <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" title="Paciente confirmou pelo link" />
+                                                                    <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" title="Cliente confirmou pelo link" />
                                                                 )}
                                                             </span>
                                                         </div>
