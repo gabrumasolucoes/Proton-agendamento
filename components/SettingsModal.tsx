@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Check, Trash2, Shield, User as UserIcon, Building2, Save } from 'lucide-react';
+import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff } from 'lucide-react';
 import { DoctorProfile, User } from '../types';
-import { apiAuth } from '../services/api';
+import { apiAuth, apiAgendaBlocks, AgendaBlock } from '../services/api';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -29,16 +29,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentUser,
   onUserUpdate
 }) => {
-  const [activeTab, setActiveTab] = useState<'doctors' | 'account'>('doctors');
+  const [activeTab, setActiveTab] = useState<'doctors' | 'account' | 'agenda'>('doctors');
   const [newDocName, setNewDocName] = useState('');
   const [newDocRole, setNewDocRole] = useState('');
   const [newDocColor, setNewDocColor] = useState(PRESET_COLORS[0].value);
-  
+
   // Account settings state
   const [userName, setUserName] = useState(currentUser?.name || '');
   const [userClinic, setUserClinic] = useState(currentUser?.clinicName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Agenda blocks state
+  const [blocks, setBlocks] = useState<AgendaBlock[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
+  const [specificDate, setSpecificDate] = useState('');
+  const [specificLabel, setSpecificLabel] = useState('');
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
+  const [rangeLabel, setRangeLabel] = useState('');
+  const [weekdayNum, setWeekdayNum] = useState<number>(6);
+  const [weekdayLabel, setWeekdayLabel] = useState('');
 
   useEffect(() => {
     if (currentUser) {
@@ -46,6 +57,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setUserClinic(currentUser.clinicName || '');
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (activeTab === 'agenda' && currentUser?.id) {
+      setBlocksLoading(true);
+      apiAgendaBlocks.getBlocks(currentUser.id).then((b) => { setBlocks(b); setBlocksLoading(false); });
+    }
+  }, [activeTab, currentUser?.id]);
+
+  const describeBlock = (b: AgendaBlock): string => {
+    if (b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.length > 0) {
+      const names: Record<number, string> = { 0: 'Domingo', 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado' };
+      const s = b.weekdays.map((w) => names[w] || '').filter(Boolean).join(', ');
+      return s || 'Dias da semana';
+    }
+    if (b.block_type === 'specific_date' && b.specific_date) return b.specific_date;
+    if (b.block_type === 'date_range' && b.start_date && b.end_date) return `${b.start_date} a ${b.end_date}`;
+    return b.block_type;
+  };
+
+  const hasWeekendBlock = (): boolean => blocks.some((b) => b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.includes(0) && b.weekdays.includes(6));
+
+  const handleBlockWeekend = async () => {
+    if (!currentUser?.id || hasWeekendBlock()) return;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'weekdays', weekdays: [0, 6], label: 'Fim de semana' });
+    if (created) setBlocks((prev) => [created, ...prev]);
+  };
+
+  const handleAddSpecific = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.id || !specificDate) return;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'specific_date', specific_date: specificDate, label: specificLabel.trim() || null });
+    if (created) { setBlocks((prev) => [created, ...prev]); setSpecificDate(''); setSpecificLabel(''); }
+  };
+
+  const handleAddRange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.id || !rangeStart || !rangeEnd) return;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'date_range', start_date: rangeStart, end_date: rangeEnd, label: rangeLabel.trim() || null });
+    if (created) { setBlocks((prev) => [created, ...prev]); setRangeStart(''); setRangeEnd(''); setRangeLabel(''); }
+  };
+
+  const handleAddWeekday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.id) return;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'weekdays', weekdays: [weekdayNum], label: weekdayLabel.trim() || null });
+    if (created) { setBlocks((prev) => [created, ...prev]); setWeekdayLabel(''); }
+  };
+
+  const handleToggleBlock = async (id: string, active: boolean) => {
+    const ok = await apiAgendaBlocks.update(id, { active });
+    if (ok) setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, active } : b)));
+  };
+
+  const handleDeleteBlock = async (id: string) => {
+    if (!window.confirm('Remover este bloqueio?')) return;
+    const ok = await apiAgendaBlocks.delete(id);
+    if (ok) setBlocks((prev) => prev.filter((b) => b.id !== id));
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +197,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'account' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
                     Conta
+                </button>
+                <button 
+                    onClick={() => setActiveTab('agenda')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'agenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                    Agenda
                 </button>
             </div>
 
@@ -300,6 +375,88 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
                             </form>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'agenda' && (
+                    <div className="space-y-6 max-w-md">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                <CalendarOff className="w-4 h-4 text-amber-500" />
+                                Bloquear dias para agendamentos
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-4">A IA do SDR e as APIs de agendamento não oferecerão horários nestes dias. O agendamento manual no Proton não é alterado.</p>
+                        </div>
+
+                        {blocksLoading ? (
+                            <p className="text-sm text-slate-500">Carregando...</p>
+                        ) : (
+                            <>
+                                <div className="space-y-2 mb-6">
+                                    {blocks.map((b) => (
+                                        <div key={b.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-slate-800 truncate">{describeBlock(b)}</p>
+                                                {b.label && <p className="text-xs text-slate-500 truncate">{b.label}</p>}
+                                            </div>
+                                            <div className="flex items-center gap-2 ml-2">
+                                                <button
+                                                    onClick={() => handleToggleBlock(b.id, !b.active)}
+                                                    className={`px-2 py-1 rounded text-xs font-medium ${b.active ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}
+                                                    title={b.active ? 'Desativar' : 'Ativar'}
+                                                >
+                                                    {b.active ? 'Ativo' : 'Inativo'}
+                                                </button>
+                                                <button onClick={() => handleDeleteBlock(b.id)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {blocks.length === 0 && <p className="text-sm text-slate-500">Nenhum bloqueio. Use as opções abaixo.</p>}
+                                </div>
+
+                                <div className="border-t border-slate-200 pt-4 space-y-4">
+                                    {!hasWeekendBlock() && (
+                                        <button type="button" onClick={handleBlockWeekend} className="w-full px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium flex items-center gap-2">
+                                            <Calendar className="w-4 h-4" /> Bloquear fins de semana
+                                        </button>
+                                    )}
+
+                                    <form onSubmit={handleAddSpecific} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                        <p className="text-xs font-semibold text-slate-600">Feriado ou folga (data única)</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <input type="date" value={specificDate} onChange={(e) => setSpecificDate(e.target.value)} className="flex-1 min-w-[140px] px-3 py-2 rounded-lg border border-slate-200 text-sm" required />
+                                            <input type="text" value={specificLabel} onChange={(e) => setSpecificLabel(e.target.value)} placeholder="Ex: Natal" className="flex-1 min-w-[120px] px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+                                            <button type="submit" disabled={!specificDate} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">Adicionar</button>
+                                        </div>
+                                    </form>
+
+                                    <form onSubmit={handleAddRange} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                        <p className="text-xs font-semibold text-slate-600">Período (ex.: férias)</p>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex gap-2 flex-wrap">
+                                                <input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} className="flex-1 min-w-[130px] px-3 py-2 rounded-lg border border-slate-200 text-sm" required />
+                                                <input type="date" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} className="flex-1 min-w-[130px] px-3 py-2 rounded-lg border border-slate-200 text-sm" required />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <input type="text" value={rangeLabel} onChange={(e) => setRangeLabel(e.target.value)} placeholder="Ex: Férias" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+                                                <button type="submit" disabled={!rangeStart || !rangeEnd} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">Adicionar</button>
+                                            </div>
+                                        </div>
+                                    </form>
+
+                                    <form onSubmit={handleAddWeekday} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                        <p className="text-xs font-semibold text-slate-600">Bloquear um dia da semana (ex.: quartas)</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <select value={weekdayNum} onChange={(e) => setWeekdayNum(Number(e.target.value))} className="px-3 py-2 rounded-lg border border-slate-200 text-sm">
+                                                <option value={0}>Domingo</option><option value={1}>Segunda</option><option value={2}>Terça</option><option value={3}>Quarta</option><option value={4}>Quinta</option><option value={5}>Sexta</option><option value={6}>Sábado</option>
+                                            </select>
+                                            <input type="text" value={weekdayLabel} onChange={(e) => setWeekdayLabel(e.target.value)} placeholder="Ex: Compromissos" className="flex-1 min-w-[120px] px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+                                            <button type="submit" className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Adicionar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

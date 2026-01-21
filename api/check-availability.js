@@ -14,6 +14,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { getBlocksForUser, isDateBlocked } = require('../lib/agenda-blocks');
 
 // Configuração do Supabase - Usar service_role para bypass de RLS
 // ⚠️ CRÍTICO: NUNCA hardcode chaves de segurança. Use apenas variáveis de ambiente.
@@ -83,7 +84,22 @@ async function checkAvailabilityHandler(req, res) {
             return res.status(400).json({ error: 'Data inválida. Use formato: YYYY-MM-DD' });
         }
 
-        // Verificar se é dia útil (não domingo)
+        // Bloqueios de agenda (fail-open: se falhar, blocks=[] e segue)
+        const blocks = await getBlocksForUser(supabase, protonUserId);
+        const { blocked, message: blockMessage } = isDateBlocked(blocks, targetDate);
+        if (blocked) {
+            const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            return res.status(200).json({
+                date: date,
+                dayOfWeek: dayNames[targetDate.getDay()],
+                available: false,
+                message: blockMessage || 'Não atendemos neste dia.',
+                availableSlots: [],
+                nextAvailableDate: getNextBusinessDay(targetDate)
+            });
+        }
+
+        // Verificar se é dia útil (não domingo) — mantido para compatibilidade
         if (targetDate.getDay() === 0) {
             return res.status(200).json({
                 date: date,

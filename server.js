@@ -16,6 +16,7 @@ const deleteUserHandler = require('./api/delete-user');
 const createProtonUserHandler = require('./api/create-proton-user');
 const confirmAppointmentHandler = require('./api/confirm-appointment');
 const publicConfigHandler = require('./api/public-config');
+const closedDatesHandler = require('./api/closed-dates');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +45,9 @@ app.post('/api/create-appointment', createAppointmentHandler);
 
 // Verificar disponibilidade (usado pelo SDR)
 app.get('/api/check-availability', checkAvailabilityHandler);
+
+// Dias fechados (usado pelo SDR / ferramentas futuras)
+app.get('/api/closed-dates', closedDatesHandler);
 
 // Admin Master APIs
 app.post('/api/auth-admin', authAdminHandler);
@@ -84,6 +88,7 @@ app.listen(PORT, () => {
     console.log(`📡 API disponível em /api`);
     console.log(`   - POST /api/create-appointment`);
     console.log(`   - GET  /api/check-availability`);
+    console.log(`   - GET  /api/closed-dates`);
     console.log(`   - GET  /api/health`);
     console.log(`   - POST /api/auth-admin (Admin Master)`);
     console.log(`   - GET  /api/list-users (Admin Master)`);

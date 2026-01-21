@@ -258,3 +258,75 @@ export const apiData = {
       await supabase.from('doctors').delete().eq('id', id);
   }
 };
+
+// --- Agenda Blocks (bloqueio de dias: fins de semana, feriados, períodos) ---
+
+export type AgendaBlockType = 'weekdays' | 'specific_date' | 'date_range';
+
+export interface AgendaBlock {
+  id: string;
+  user_id: string;
+  block_type: AgendaBlockType;
+  weekdays: number[] | null;
+  specific_date: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  label: string | null;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const apiAgendaBlocks = {
+  async getBlocks(userId: string): Promise<AgendaBlock[]> {
+    const { data, error } = await supabase
+      .from('agenda_blocks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching agenda_blocks:', error);
+      return [];
+    }
+    return (data || []) as AgendaBlock[];
+  },
+
+  async insert(userId: string, block: { block_type: AgendaBlockType; weekdays?: number[]; specific_date?: string; start_date?: string; end_date?: string; label?: string | null }): Promise<AgendaBlock | null> {
+    const payload: Record<string, unknown> = {
+      user_id: userId,
+      block_type: block.block_type,
+      label: block.label || null,
+      active: true,
+    };
+    if (block.block_type === 'weekdays' && Array.isArray(block.weekdays)) payload.weekdays = block.weekdays;
+    if (block.block_type === 'specific_date' && block.specific_date) payload.specific_date = block.specific_date;
+    if (block.block_type === 'date_range' && block.start_date && block.end_date) {
+      payload.start_date = block.start_date;
+      payload.end_date = block.end_date;
+    }
+    const { data, error } = await supabase.from('agenda_blocks').insert([payload]).select().single();
+    if (error) {
+      console.error('Error inserting agenda_block:', error);
+      return null;
+    }
+    return data as AgendaBlock;
+  },
+
+  async update(id: string, patch: { active?: boolean; label?: string | null }): Promise<boolean> {
+    const { error } = await supabase.from('agenda_blocks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) {
+      console.error('Error updating agenda_block:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async delete(id: string): Promise<boolean> {
+    const { error } = await supabase.from('agenda_blocks').delete().eq('id', id);
+    if (error) {
+      console.error('Error deleting agenda_block:', error);
+      return false;
+    }
+    return true;
+  },
+};

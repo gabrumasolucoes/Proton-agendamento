@@ -19,6 +19,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { getBlocksForUser, isDateBlocked } = require('../lib/agenda-blocks');
 
 // Configuração do Supabase - usar service_role key para bypass de RLS
 // ⚠️ CRÍTICO: NUNCA hardcode chaves de segurança. Use apenas variáveis de ambiente.
@@ -95,6 +96,16 @@ async function createAppointmentHandler(req, res) {
         }
 
         const endDate = new Date(startDate.getTime() + duration * 60000);
+
+        // Bloqueios de agenda (fail-open: se falhar, blocks=[] e segue)
+        const blocks = await getBlocksForUser(supabase, protonUserId);
+        const { blocked, message: blockMessage } = isDateBlocked(blocks, startDate);
+        if (blocked) {
+            return res.status(409).json({
+                error: 'Dia bloqueado para agendamentos',
+                message: blockMessage || 'Esta data não está disponível para agendamento.'
+            });
+        }
 
         // 1. Buscar ou criar paciente (vinculado ao usuário do Proton)
         let patient = await findOrCreatePatient(patientName, patientPhone, protonUserId);
