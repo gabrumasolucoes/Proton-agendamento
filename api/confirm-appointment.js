@@ -35,15 +35,10 @@ async function getAppointmentByToken(token) {
         throw new Error('Database não configurado');
     }
 
-    // Buscar agendamento com join para pegar nome do médico
+    // Buscar agendamento (sem joins para evitar falhas se doctors/FK não existir)
     const { data: appointment, error } = await supabase
         .from('appointments')
-        .select(`
-            *,
-            doctors (
-                name
-            )
-        `)
+        .select('*')
         .eq('confirmation_token', token)
         .single();
 
@@ -65,15 +60,18 @@ async function getAppointmentByToken(token) {
         return { success: false, error: 'Agendamento foi cancelado' };
     }
 
-    // Formatar dados para resposta
-    // doctors pode ser um objeto ou array dependendo do join
+    // Buscar nome do médico (opcional)
     let doctorName = 'A definir';
-    if (appointment.doctors) {
-        if (Array.isArray(appointment.doctors) && appointment.doctors.length > 0) {
-            doctorName = appointment.doctors[0].name || 'A definir';
-        } else if (appointment.doctors.name) {
-            doctorName = appointment.doctors.name;
-        }
+    if (appointment.doctor_id) {
+        const { data: doc } = await supabase.from('doctors').select('name').eq('id', appointment.doctor_id).single();
+        if (doc?.name) doctorName = doc.name;
+    }
+
+    // Buscar nome da empresa/clínica (profiles.clinic_name do user_id do agendamento)
+    let companyName = 'Proton';
+    if (appointment.user_id) {
+        const { data: profile } = await supabase.from('profiles').select('clinic_name').eq('id', appointment.user_id).single();
+        if (profile?.clinic_name) companyName = profile.clinic_name;
     }
 
     const formatted = {
@@ -83,7 +81,8 @@ async function getAppointmentByToken(token) {
         end_time: appointment.end_time,
         doctor_name: doctorName,
         title: appointment.title,
-        status: appointment.status
+        status: appointment.status,
+        company_name: companyName
     };
 
     return { success: true, appointment: formatted };

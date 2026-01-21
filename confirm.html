@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirmação de Agendamento - Clínica Ágil</title>
+    <title>Confirmação de Agendamento | Proton Agendamento</title>
     <style>
         * {
             margin: 0;
@@ -190,7 +190,7 @@
 <body>
     <div class="container">
         <div class="logo">
-            <div class="logo-text">S77</div>
+            <div class="logo-text" id="companyName">Proton</div>
         </div>
 
         <h1 class="title">Você confirma sua presença?</h1>
@@ -230,7 +230,7 @@
         </div>
 
         <div class="footer">
-            ©2026 Clínica Ágil
+            ©2026 Proton Agendamento
         </div>
     </div>
 
@@ -265,6 +265,10 @@
                 }
 
                 const appointment = data.appointment;
+                
+                // Nome da empresa (clínica) que fez o login no Proton — no lugar do S77
+                const companyEl = document.getElementById('companyName');
+                if (companyEl) companyEl.textContent = appointment.company_name || appointment.clinic_name || 'Proton';
                 
                 // Exibir informações
                 document.getElementById('patientName').textContent = appointment.patient_name || 'Não informado';
