@@ -122,6 +122,7 @@ export const apiData = {
       doctorId: apt.doctor_id,
       start: new Date(apt.start_time),
       end: new Date(apt.end_time),
+      confirmedAt: apt.confirmed_at || null,
     }));
   },
 

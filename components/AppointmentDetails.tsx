@@ -56,6 +56,11 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                     <StatusIcon className="w-3.5 h-3.5" />
                     {statusConfig.label}
                 </span>
+                {appointment.confirmedAt && (
+                    <span className="flex items-center text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                        <CheckCircle className="w-3.5 h-3.5 mr-1" /> Confirmado pelo paciente em {format(new Date(appointment.confirmedAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                )}
                 {appointment.source === 'chatbot' && (
                     <span className="flex items-center text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
                         <MessageCircle className="w-3.5 h-3.5 mr-1" /> WhatsApp

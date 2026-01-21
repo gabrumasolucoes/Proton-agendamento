@@ -67,11 +67,15 @@ async function getAppointmentByToken(token) {
         if (doc?.name) doctorName = doc.name;
     }
 
-    // Buscar nome da empresa/clínica (profiles.clinic_name do user_id do agendamento)
+    // Nome da empresa logada: clinic_name se for personalizado; senão name (Nome Completo). "Minha Clínica" = padrão, usa name.
     let companyName = 'Proton';
     if (appointment.user_id) {
-        const { data: profile } = await supabase.from('profiles').select('clinic_name').eq('id', appointment.user_id).single();
-        if (profile?.clinic_name) companyName = profile.clinic_name;
+        const { data: profile } = await supabase.from('profiles').select('clinic_name, name').eq('id', appointment.user_id).single();
+        if (profile) {
+            const cn = (profile.clinic_name || '').trim();
+            const nm = (profile.name || '').trim();
+            companyName = (cn && cn !== 'Minha Clínica') ? cn : (nm || 'Proton');
+        }
     }
 
     const formatted = {

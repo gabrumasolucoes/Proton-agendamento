@@ -87,6 +87,30 @@ const App: React.FC = () => {
       init();
   }, []);
 
+  // Notificar usuário quando houver confirmações de pacientes pelo link (últimos 7 dias). Uma vez por sessão.
+  useEffect(() => {
+    if (!user || isDemoMode || mirrorMode.isActive || appointments.length === 0) return;
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    const recent = appointments.filter((a: Appointment) => {
+      const c = a.confirmedAt;
+      if (!c) return false;
+      return new Date(c) >= weekAgo;
+    });
+    if (recent.length > 0 && !sessionStorage.getItem('proton_confirmation_toast_done')) {
+      const names = recent.slice(0, 3).map((a: Appointment) => a.patientName).join(', ');
+      const more = recent.length > 3 ? ` e mais ${recent.length - 3}` : '';
+      setNotifications(prev => [{
+        id: 'confirmation-' + Date.now(),
+        title: 'Pacientes confirmaram presença',
+        message: `${names}${more} confirmaram pelo link. Confira na agenda.`,
+        time: 'Agora',
+        read: false,
+        type: 'success'
+      }, ...prev]);
+      sessionStorage.setItem('proton_confirmation_toast_done', '1');
+    }
+  }, [appointments, user, isDemoMode, mirrorMode.isActive]);
+
   const loadData = async (userId: string, isDemo: boolean) => {
       setLoading(true);
       try {
@@ -132,6 +156,7 @@ const App: React.FC = () => {
                           doctorId: apt.doctor_id,
                           start: new Date(apt.start_time),
                           end: new Date(apt.end_time),
+                          confirmedAt: apt.confirmed_at || null,
                       }));
                       pts = (data.patients || []) as Patient[];
                       docs = (data.doctors || []) as DoctorProfile[];
