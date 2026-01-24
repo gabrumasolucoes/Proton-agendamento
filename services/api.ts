@@ -284,6 +284,7 @@ export type AgendaBlockType = 'weekdays' | 'specific_date' | 'date_range';
 export interface AgendaBlock {
   id: string;
   user_id: string;
+  doctor_id: string | null; // NULL = clínica inteira, NOT NULL = profissional específico
   block_type: AgendaBlockType;
   weekdays: number[] | null;
   specific_date: string | null;
@@ -309,10 +310,19 @@ export const apiAgendaBlocks = {
     return (data || []) as AgendaBlock[];
   },
 
-  async insert(userId: string, block: { block_type: AgendaBlockType; weekdays?: number[]; specific_date?: string; start_date?: string; end_date?: string; label?: string | null }): Promise<AgendaBlock | null> {
+  async insert(userId: string, block: { 
+    block_type: AgendaBlockType; 
+    doctor_id?: string | null; // Novo: null ou undefined = clínica inteira
+    weekdays?: number[]; 
+    specific_date?: string; 
+    start_date?: string; 
+    end_date?: string; 
+    label?: string | null 
+  }): Promise<AgendaBlock | null> {
     const payload: Record<string, unknown> = {
       user_id: userId,
       block_type: block.block_type,
+      doctor_id: block.doctor_id || null, // null = clínica inteira
       label: block.label || null,
       active: true,
     };

@@ -52,6 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Agenda blocks state
   const [blocks, setBlocks] = useState<AgendaBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(false);
+  const [selectedDoctorFilter, setSelectedDoctorFilter] = useState<string | 'all'>('all'); // 'all' = clínica inteira
   const [specificDate, setSpecificDate] = useState('');
   const [specificLabel, setSpecificLabel] = useState('');
   const [rangeStart, setRangeStart] = useState('');
@@ -75,42 +76,83 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [activeTab, currentUser?.id]);
 
   const describeBlock = (b: AgendaBlock): string => {
+    let desc = '';
     if (b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.length > 0) {
       const names: Record<number, string> = { 0: 'Domingo', 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado' };
       const s = b.weekdays.map((w) => names[w] || '').filter(Boolean).join(', ');
-      return s || 'Dias da semana';
+      desc = s || 'Dias da semana';
+    } else if (b.block_type === 'specific_date' && b.specific_date) {
+      desc = b.specific_date;
+    } else if (b.block_type === 'date_range' && b.start_date && b.end_date) {
+      desc = `${b.start_date} a ${b.end_date}`;
+    } else {
+      desc = b.block_type;
     }
-    if (b.block_type === 'specific_date' && b.specific_date) return b.specific_date;
-    if (b.block_type === 'date_range' && b.start_date && b.end_date) return `${b.start_date} a ${b.end_date}`;
-    return b.block_type;
+    
+    // Adicionar indicação do profissional
+    if (b.doctor_id) {
+      const doctor = doctors.find(d => d.id === b.doctor_id);
+      if (doctor) {
+        desc += ` • 👤 ${doctor.name}`;
+      }
+    } else {
+      desc += ` • 🏢 Clínica inteira`;
+    }
+    
+    return desc;
   };
 
   const hasWeekendBlock = (): boolean => blocks.some((b) => b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.includes(0) && b.weekdays.includes(6));
 
   const handleBlockWeekend = async () => {
     if (!currentUser?.id || hasWeekendBlock()) return;
-    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'weekdays', weekdays: [0, 6], label: 'Fim de semana' });
+    const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { 
+      block_type: 'weekdays', 
+      weekdays: [0, 6], 
+      label: 'Fim de semana',
+      doctor_id: doctorId
+    });
     if (created) setBlocks((prev) => [created, ...prev]);
   };
 
   const handleAddSpecific = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.id || !specificDate) return;
-    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'specific_date', specific_date: specificDate, label: specificLabel.trim() || null });
+    const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { 
+      block_type: 'specific_date', 
+      specific_date: specificDate, 
+      label: specificLabel.trim() || null,
+      doctor_id: doctorId
+    });
     if (created) { setBlocks((prev) => [created, ...prev]); setSpecificDate(''); setSpecificLabel(''); }
   };
 
   const handleAddRange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.id || !rangeStart || !rangeEnd) return;
-    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'date_range', start_date: rangeStart, end_date: rangeEnd, label: rangeLabel.trim() || null });
+    const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { 
+      block_type: 'date_range', 
+      start_date: rangeStart, 
+      end_date: rangeEnd, 
+      label: rangeLabel.trim() || null,
+      doctor_id: doctorId
+    });
     if (created) { setBlocks((prev) => [created, ...prev]); setRangeStart(''); setRangeEnd(''); setRangeLabel(''); }
   };
 
   const handleAddWeekday = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.id) return;
-    const created = await apiAgendaBlocks.insert(currentUser.id, { block_type: 'weekdays', weekdays: [weekdayNum], label: weekdayLabel.trim() || null });
+    const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
+    const created = await apiAgendaBlocks.insert(currentUser.id, { 
+      block_type: 'weekdays', 
+      weekdays: [weekdayNum], 
+      label: weekdayLabel.trim() || null,
+      doctor_id: doctorId
+    });
     if (created) { setBlocks((prev) => [created, ...prev]); setWeekdayLabel(''); }
   };
 
@@ -486,6 +528,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 Bloquear dias para agendamentos
                             </h3>
                             <p className="text-sm text-slate-500 mb-4">A IA do Vigil e as APIs de agendamento não oferecerão horários nestes dias. O agendamento manual no Proton não é alterado.</p>
+                            
+                            {/* Seletor de Profissional */}
+                            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
+                                <label className="block text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-2">
+                                    Bloquear para:
+                                </label>
+                                <select
+                                    value={selectedDoctorFilter}
+                                    onChange={(e) => setSelectedDoctorFilter(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="all">🏢 Clínica Inteira (todos os profissionais)</option>
+                                    {doctors.filter(d => d.active).map(doc => (
+                                        <option key={doc.id} value={doc.id}>
+                                            👤 {doc.name} ({doc.specialty})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-indigo-600 mt-2">
+                                    {selectedDoctorFilter === 'all' 
+                                        ? '📌 Os bloqueios afetarão todos os profissionais'
+                                        : `📌 Os bloqueios afetarão apenas ${doctors.find(d => d.id === selectedDoctorFilter)?.name}`
+                                    }
+                                </p>
+                            </div>
                         </div>
 
                         {blocksLoading ? (
