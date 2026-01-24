@@ -150,6 +150,12 @@ async function createAppointmentHandler(req, res) {
         }
 
         // 5. Retornar sucesso com detalhes
+        // IMPORTANTE: startDate vem em UTC do SDR. Para exibir em BRT:
+        // - toLocaleDateString com timeZone converte a DATA corretamente
+        // - toLocaleTimeString SEM timeZone interpreta UTC como local (errado!)
+        // - Solução: criar Date em BRT explicitamente
+        const startDateBRT = new Date(startDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        
         return res.status(201).json({
             success: true,
             message: 'Agendamento criado com sucesso!',
@@ -157,12 +163,12 @@ async function createAppointmentHandler(req, res) {
                 id: appointment.id,
                 patientName: patientName,
                 doctorName: doctor?.name || 'A definir',
-                date: startDate.toLocaleDateString('pt-BR'),
-                time: startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                date: startDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+                time: startDateBRT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                 procedure: procedureType,
                 status: 'pending'
             },
-            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${startDate.toLocaleDateString('pt-BR')}\n⏰ Horário: ${startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n👨‍⚕️ Médico: ${doctor?.name || 'A definir'}\n📋 Procedimento: ${procedureType}\n\nAguardamos você!`
+            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${startDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n⏰ Horário: ${startDateBRT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n👨‍⚕️ Médico: ${doctor?.name || 'A definir'}\n📋 Procedimento: ${procedureType}\n\nAguardamos você!`
         });
 
     } catch (error) {
