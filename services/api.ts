@@ -141,14 +141,20 @@ export const apiData = {
       const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
       if (isBlocked.blocked) {
         console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
-        throw new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
+        console.error('❌ LANÇANDO ERRO DE BLOQUEIO PARA APP.TSX');
+        const error = new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
+        console.error('❌ Erro criado:', error.message);
+        throw error;
       }
 
       // Verificar conflito de horário com outros agendamentos
       const hasConflict = await checkTimeConflict(apt.start, apt.end, apt.doctorId, userId);
       if (hasConflict) {
         console.error('❌ Conflito de horário detectado');
-        throw new Error('Já existe um agendamento neste horário para este profissional.');
+        console.error('❌ LANÇANDO ERRO DE CONFLITO PARA APP.TSX');
+        const error = new Error('Já existe um agendamento neste horário para este profissional.');
+        console.error('❌ Erro criado:', error.message);
+        throw error;
       }
     }
 

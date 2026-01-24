@@ -427,7 +427,9 @@ const App: React.FC = () => {
     };
 
     try {
+        console.log('🔍 [App.tsx] Tentando salvar agendamento...');
         const savedApt = await apiData.saveAppointment(appointmentToSave, targetUserId, isDemoMode);
+        console.log('✅ [App.tsx] saveAppointment retornou:', savedApt);
         
         if (savedApt) {
             if ('id' in appointmentData) {
@@ -443,10 +445,13 @@ const App: React.FC = () => {
             setEditingAppointment(null);
             setSelectedAppointment(null);
         } else {
+            console.warn('⚠️ [App.tsx] saveAppointment retornou null');
             addNotification('Erro', 'Não foi possível salvar o agendamento. Verifique se a data não está bloqueada.', 'error');
         }
     } catch (error: any) {
         // Capturar erro de bloqueio ou outros erros
+        console.error('🚨 [App.tsx] ERRO CAPTURADO NO CATCH:', error);
+        console.error('🚨 [App.tsx] Mensagem do erro:', error.message);
         addNotification('Dia Bloqueado', error.message || 'Não foi possível salvar o agendamento.', 'error');
         console.error('Erro ao salvar agendamento:', error);
     }
