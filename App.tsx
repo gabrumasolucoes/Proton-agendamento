@@ -442,6 +442,8 @@ const App: React.FC = () => {
         setEditingAppointment(null);
         setSelectedAppointment(null);
     } else {
+        addNotification('Erro', 'Não foi possível salvar o agendamento. Verifique se a data não está bloqueada.', 'error');
+    }
         // Error handling
         addNotification('Erro ao Salvar', 'Não foi possível salvar o agendamento. Tente sair e entrar novamente.', 'alert');
     }

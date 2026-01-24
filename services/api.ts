@@ -135,6 +135,16 @@ export const apiData = {
       return { ...apt, id: isNew ? Math.random().toString(36).substr(2, 9) : apt.id } as Appointment;
     }
 
+    // Verificar bloqueios de agenda APENAS para novos agendamentos
+    if (isNew) {
+      const blocks = await apiAgendaBlocks.getBlocks(userId);
+      const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
+      if (isBlocked.blocked) {
+        console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
+        throw new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
+      }
+    }
+
     const payload = {
       user_id: userId,
       patient_id: apt.patientId,
@@ -358,3 +368,50 @@ export const apiAgendaBlocks = {
     return true;
   },
 };
+
+// Função auxiliar para verificar se uma data está bloqueada
+// Considera bloqueios de clínica inteira (doctor_id = null) e do profissional específico
+function checkIfDateIsBlocked(blocks: AgendaBlock[], date: Date, doctorId: string | null): { blocked: boolean; message?: string } {
+  if (!blocks || !Array.isArray(blocks)) return { blocked: false };
+
+  const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}-${mm}-${dd}`;
+  const weekday = date.getDay();
+
+  // Filtrar bloqueios relevantes:
+  // 1. Clínica inteira (doctor_id = null)
+  // 2. Profissional específico (doctor_id = doctorId)
+  const relevantBlocks = blocks.filter(b => 
+    b.active && (b.doctor_id === null || b.doctor_id === doctorId)
+  );
+
+  for (const b of relevantBlocks) {
+    if (b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.includes(weekday)) {
+      const prefix = b.doctor_id ? 'Este profissional não atende' : 'Não atendemos';
+      return { 
+        blocked: true, 
+        message: (b.label && b.label.trim()) || `${prefix} às ${DAY_NAMES[weekday]}s.` 
+      };
+    }
+    if (b.block_type === 'specific_date' && b.specific_date === dateStr) {
+      const prefix = b.doctor_id ? 'Este profissional está indisponível' : 'A clínica está fechada';
+      return { 
+        blocked: true, 
+        message: (b.label && b.label.trim()) || `${prefix} neste dia.` 
+      };
+    }
+    if (b.block_type === 'date_range' && b.start_date && b.end_date && dateStr >= b.start_date && dateStr <= b.end_date) {
+      const prefix = b.doctor_id ? 'Este profissional está indisponível' : 'A clínica está fechada';
+      return { 
+        blocked: true, 
+        message: (b.label && b.label.trim()) || `${prefix} neste período.` 
+      };
+    }
+  }
+
+  return { blocked: false };
+}

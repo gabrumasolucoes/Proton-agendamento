@@ -98,7 +98,8 @@ async function createAppointmentHandler(req, res) {
         const endDate = new Date(startDate.getTime() + duration * 60000);
 
         // Bloqueios de agenda (fail-open: se falhar, blocks=[] e segue)
-        const blocks = await getBlocksForUser(supabase, protonUserId);
+        // IMPORTANTE: Passar protonDoctorId para verificar bloqueios do profissional específico
+        const blocks = await getBlocksForUser(supabase, protonUserId, protonDoctorId);
         const { blocked, message: blockMessage } = isDateBlocked(blocks, startDate);
         if (blocked) {
             return res.status(409).json({
