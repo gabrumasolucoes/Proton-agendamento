@@ -169,7 +169,7 @@ async function createAppointmentHandler(req, res) {
                 procedure: procedureType,
                 status: 'pending'
             },
-            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${startDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n⏰ Horário: ${startDateBRT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n👨‍⚕️ Médico: ${doctor?.name || 'A definir'}\n📋 Procedimento: ${procedureType}\n\nAguardamos você!`
+            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${startDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n⏰ Horário: ${startDateBRT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n👤 Profissional: ${doctor?.name || 'A definir'}\n📋 Assunto: ${procedureType}\n\nAguardamos você!`
         });
 
     } catch (error) {
