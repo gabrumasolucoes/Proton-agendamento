@@ -158,7 +158,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
       <div className={`w-full md:w-[380px] bg-white border-r border-slate-200 flex flex-col z-10 transition-all ${selectedPatientId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-5 border-b border-slate-100">
           <div className="flex justify-between items-center mb-3">
-             <h2 className="text-lg font-bold text-slate-800">Pacientes</h2>
+             <h2 className="text-lg font-bold text-slate-800">Clientes</h2>
              <button 
                 onClick={handleOpenAddModal}
                 className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2 text-xs font-bold"
@@ -180,7 +180,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
           </div>
           
           <div className="flex items-center justify-between mt-3 px-1">
-             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Lista de Pacientes</span>
+             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Lista de Clientes</span>
              <span className="text-xs font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{filteredPatients.length}</span>
           </div>
         </div>
@@ -189,9 +189,9 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
           {filteredPatients.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               <User className="w-10 h-10 mx-auto text-slate-200 mb-3" />
-              <p className="text-sm">Nenhum paciente encontrado.</p>
+              <p className="text-sm">Nenhum cliente encontrado.</p>
               <button onClick={handleOpenAddModal} className="mt-4 text-indigo-600 text-sm font-medium hover:underline">
-                  Cadastrar novo paciente
+                  Cadastrar novo cliente
               </button>
             </div>
           ) : (
@@ -243,8 +243,8 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-100">
                <User className="w-10 h-10 text-slate-300" />
             </div>
-            <h3 className="text-lg font-medium text-slate-600">Nenhum Paciente Selecionado</h3>
-            <p className="text-sm max-w-xs text-center mt-2 text-slate-400">Selecione um paciente na lista ao lado para visualizar o prontuário completo, histórico e agendamentos.</p>
+            <h3 className="text-lg font-medium text-slate-600">Nenhum Cliente Selecionado</h3>
+            <p className="text-sm max-w-xs text-center mt-2 text-slate-400">Selecione um cliente na lista ao lado para visualizar o histórico completo e agendamentos.</p>
           </div>
         ) : (
           <>
@@ -306,7 +306,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                                    className="w-full text-left px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors border-t border-slate-50"
                                >
                                    <Trash2 className="w-4 h-4" />
-                                   Excluir Paciente
+                                   Excluir Cliente
                                </button>
                            </div>
                        )}
@@ -368,7 +368,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
 
                         {selectedPatient.history.length === 0 ? (
                             <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-                                <p className="text-slate-500 text-sm">Este paciente ainda não possui histórico de consultas.</p>
+                                <p className="text-slate-500 text-sm">Este cliente ainda não possui histórico de atendimentos.</p>
                             </div>
                         ) : (
                             <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-4 before:w-0.5 before:bg-slate-200">
@@ -462,7 +462,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                   <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                       <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                           <UserPlus className="w-5 h-5 text-indigo-600" />
-                          {editingPatient ? 'Editar Paciente' : 'Novo Paciente'}
+                          {editingPatient ? 'Editar Cliente' : 'Novo Cliente'}
                       </h3>
                       <button onClick={() => setIsPatientModalOpen(false)} className="p-1 rounded-full hover:bg-slate-200 transition-colors">
                           <X className="w-5 h-5 text-slate-400" />
@@ -515,7 +515,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                               className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all flex items-center gap-2"
                           >
                               <Save className="w-4 h-4" />
-                              {editingPatient ? 'Salvar Alterações' : 'Criar Paciente'}
+                              {editingPatient ? 'Salvar Alterações' : 'Criar Cliente'}
                           </button>
                       </div>
                   </form>

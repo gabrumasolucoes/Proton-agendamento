@@ -9,9 +9,10 @@ import {
   ChevronRight, 
   ArrowUpRight, 
   ArrowDownRight,
-  Filter
+  Filter,
+  Briefcase
 } from 'lucide-react';
-import { Appointment } from '../types';
+import { Appointment, DoctorProfile } from '../types';
 import { 
   format, 
   startOfWeek, 
@@ -36,13 +37,15 @@ import { ptBR } from 'date-fns/locale';
 
 interface ReportsViewProps {
   appointments: Appointment[];
+  doctors: DoctorProfile[];
 }
 
 type TimeRange = 'week' | 'month' | 'year';
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ appointments }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | 'all'>('all');
 
   // 1. Calculate Date Range
   const dateRange = useMemo(() => {
@@ -56,18 +59,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments }) => {
     }
   }, [timeRange, currentDate]);
 
-  // 2. Filter Appointments
+  // 2. Filter Appointments by Doctor
+  const doctorFilteredAppointments = useMemo(() => {
+    if (selectedDoctorId === 'all') return appointments;
+    return appointments.filter(apt => apt.doctorId === selectedDoctorId);
+  }, [appointments, selectedDoctorId]);
+
+  // 3. Filter by Date Range
   const filteredAppointments = useMemo(() => {
-    return appointments.filter(apt => 
+    return doctorFilteredAppointments.filter(apt => 
       isWithinInterval(apt.start, dateRange) && apt.status !== 'cancelled'
     );
-  }, [appointments, dateRange]);
+  }, [doctorFilteredAppointments, dateRange]);
 
   const cancelledAppointments = useMemo(() => {
-    return appointments.filter(apt => 
+    return doctorFilteredAppointments.filter(apt => 
         isWithinInterval(apt.start, dateRange) && apt.status === 'cancelled'
       ).length;
-  }, [appointments, dateRange]);
+  }, [doctorFilteredAppointments, dateRange]);
 
   // 3. Aggregate Data for Charts
 
@@ -167,25 +176,45 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments }) => {
            <p className="text-sm text-gray-500">Analise o desempenho da clínica e tendências.</p>
         </div>
 
-        <div className="flex items-center bg-gray-100 rounded-lg p-1">
-           <button 
-             onClick={() => setTimeRange('week')}
-             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === 'week' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-           >
-             Semana
-           </button>
-           <button 
-             onClick={() => setTimeRange('month')}
-             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === 'month' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-           >
-             Mês
-           </button>
-           <button 
-             onClick={() => setTimeRange('year')}
-             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === 'year' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-           >
-             Ano
-           </button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+           {/* Filtro de Profissional */}
+           <div className="flex items-center gap-2">
+             <Briefcase className="w-4 h-4 text-gray-400" />
+             <select
+               value={selectedDoctorId}
+               onChange={(e) => setSelectedDoctorId(e.target.value as string | 'all')}
+               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+             >
+               <option value="all">Clínica Inteira</option>
+               {doctors.filter(d => d.active).map(doctor => (
+                 <option key={doctor.id} value={doctor.id}>
+                   {doctor.name}
+                 </option>
+               ))}
+             </select>
+           </div>
+
+           {/* Filtro de Período */}
+           <div className="flex items-center bg-gray-100 rounded-lg p-1">
+             <button 
+               onClick={() => setTimeRange('week')}
+               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === 'week' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               Semana
+             </button>
+             <button 
+               onClick={() => setTimeRange('month')}
+               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === 'month' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               Mês
+             </button>
+             <button 
+               onClick={() => setTimeRange('year')}
+               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${timeRange === 'year' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               Ano
+             </button>
+           </div>
         </div>
 
         <div className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg px-2 py-1">

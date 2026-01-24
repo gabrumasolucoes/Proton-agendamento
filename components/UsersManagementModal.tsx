@@ -608,7 +608,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                                     }`}
                                                 >
                                                     <Users className="w-4 h-4" />
-                                                    Pacientes
+                                                    Clientes
                                                 </button>
                                                 <button
                                                     onClick={() => setMirrorView('reports')}
@@ -811,7 +811,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                             <div className="bg-white border border-slate-200 rounded-lg p-4 text-center">
                                                 <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                                                 <div className="text-2xl font-bold text-slate-900">{userData.stats.totalPatients}</div>
-                                                <div className="text-xs text-slate-500">Pacientes</div>
+                                                <div className="text-xs text-slate-500">Clientes</div>
                                             </div>
                                             <div className="bg-white border border-slate-200 rounded-lg p-4 text-center">
                                                 <Activity className="w-8 h-8 text-emerald-600 mx-auto mb-2" />

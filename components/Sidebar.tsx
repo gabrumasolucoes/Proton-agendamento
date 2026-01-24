@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
         <NavItem 
           icon={<Users className="w-5 h-5" />} 
-          label="Pacientes" 
+          label="Clientes" 
           active={currentView === 'patients'}
           onClick={() => onViewChange('patients')}
         />
@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ))}
             
             {doctors.length === 0 && (
-                <p className="text-xs text-slate-400 px-3 italic">Nenhum médico configurado</p>
+                <p className="text-xs text-slate-400 px-3 italic">Nenhum profissional configurado</p>
             )}
         </div>
       </div>

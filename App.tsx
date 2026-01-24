@@ -206,7 +206,7 @@ const App: React.FC = () => {
           if (docs.length === 0 && !isDemo && !mirrorMode.isActive) {
                // Create initial doctor if none exists for new user (apenas se não estiver em mirror mode)
                const newDoc = await apiData.saveDoctor({
-                   name: user?.name || 'Médico Principal',
+                   name: user?.name || 'Profissional Principal',
                    specialty: 'Geral',
                    color: '#3b82f6',
                    active: true
@@ -284,10 +284,36 @@ const App: React.FC = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleToggleDoctor = (id: string) => {
+  const handleToggleDoctor = async (id: string) => {
+    if (!user) return;
+    
+    const doctor = doctors.find(d => d.id === id);
+    if (!doctor) return;
+    
+    // Atualizar estado local primeiro (UX responsiva)
+    const newActiveState = !doctor.active;
     setDoctors(prev => prev.map(doc => 
-        doc.id === id ? { ...doc, active: !doc.active } : doc
+        doc.id === id ? { ...doc, active: newActiveState } : doc
     ));
+    
+    // Salvar no banco de dados
+    try {
+      await apiData.saveDoctor(
+        { ...doctor, active: newActiveState }, 
+        user.id, 
+        isDemoMode
+      );
+      
+      const action = newActiveState ? 'Agenda aberta' : 'Agenda fechada';
+      addNotification(action, `${doctor.name} - ${action.toLowerCase()} com sucesso.`, 'success');
+    } catch (error) {
+      console.error('Erro ao atualizar status do profissional:', error);
+      // Reverter estado local em caso de erro
+      setDoctors(prev => prev.map(doc => 
+          doc.id === id ? { ...doc, active: doctor.active } : doc
+      ));
+      addNotification('Erro', 'Não foi possível atualizar a agenda do profissional.', 'alert');
+    }
   };
 
   const handleAddDoctor = async (newDoc: Omit<DoctorProfile, 'id' | 'active'>) => {
@@ -313,7 +339,7 @@ const App: React.FC = () => {
       if (!user) return;
       const savedPatient = await apiData.savePatient(newPatient, user.id, isDemoMode);
       setPatients(prev => [...prev, savedPatient]);
-      addNotification('Paciente Cadastrado', `${newPatient.name} foi adicionado à base.`, 'success');
+      addNotification('Cliente Cadastrado', `${newPatient.name} foi adicionado à base.`, 'success');
   };
 
   const handleUpdatePatient = async (updatedPatient: Patient) => {
@@ -324,10 +350,10 @@ const App: React.FC = () => {
   };
 
   const handleDeletePatient = async (patientId: string) => {
-      if (window.confirm('Tem certeza que deseja excluir este paciente?')) {
+      if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
         await apiData.deletePatient(patientId, isDemoMode);
         setPatients(prev => prev.filter(p => p.id !== patientId));
-        addNotification('Paciente Removido', 'O paciente foi removido da base de dados.', 'warning');
+        addNotification('Cliente Removido', 'O cliente foi removido da base de dados.', 'warning');
       }
   };
 
@@ -394,11 +420,11 @@ const App: React.FC = () => {
         if ('id' in appointmentData) {
             // Edit
             setAppointments(prev => prev.map(apt => apt.id === savedApt.id ? savedApt : apt));
-            addNotification('Agendamento Atualizado', `Consulta de ${finalPatientName} foi alterada.`, 'success');
+            addNotification('Agendamento Atualizado', `Atendimento de ${finalPatientName} foi alterado.`, 'success');
         } else {
             // Create
             setAppointments(prev => [...prev, savedApt]);
-            addNotification('Novo Agendamento', `Consulta para ${finalPatientName} criada.`, 'success');
+            addNotification('Novo Agendamento', `Atendimento para ${finalPatientName} criado.`, 'success');
         }
         setIsCreateModalOpen(false);
         setEditingAppointment(null);
@@ -513,7 +539,10 @@ const App: React.FC = () => {
               );
           case 'reports':
               return (
-                  <ReportsView appointments={filteredAppointments} />
+                  <ReportsView 
+                    appointments={filteredAppointments}
+                    doctors={doctors}
+                  />
               );
           default:
               return null;
@@ -687,6 +716,7 @@ const App: React.FC = () => {
             initialData={editingAppointment}
             tags={tags}
             patients={patients}
+            doctors={doctors}
             onAddTag={handleAddTag}
             onRemoveTag={handleRemoveTag}
             onClose={() => {

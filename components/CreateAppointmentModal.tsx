@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Clock, AlignLeft, User, Calendar as CalendarIcon, Tag, Sparkles, Plus, Check } from 'lucide-react';
-import { Appointment, ProcedureTag, Patient } from '../types';
+import { X, Clock, AlignLeft, User, Calendar as CalendarIcon, Tag, Sparkles, Plus, Check, Briefcase } from 'lucide-react';
+import { Appointment, ProcedureTag, Patient, DoctorProfile } from '../types';
 import { addHours, format, startOfHour, addDays } from 'date-fns';
 import { TAG_COLORS } from '../constants';
 
@@ -11,11 +11,12 @@ interface CreateAppointmentModalProps {
   initialData?: Appointment | null;
   tags: ProcedureTag[];
   patients: Patient[];
+  doctors: DoctorProfile[];
   onAddTag: (tag: ProcedureTag) => void;
   onRemoveTag: (tagId: string) => void;
 }
 
-export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ onClose, onSave, initialData, tags, patients, onAddTag, onRemoveTag }) => {
+export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ onClose, onSave, initialData, tags, patients, doctors, onAddTag, onRemoveTag }) => {
   const [title, setTitle] = useState(initialData?.title || '');
   
   // Patient Selection State
@@ -24,6 +25,11 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
   const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
   const patientInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  
+  // Doctor Selection State
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(
+    initialData?.doctorId || doctors.find(d => d.active)?.id || ''
+  );
   
   const initialDate = initialData ? initialData.start : new Date();
   const initialStartTime = initialData ? initialData.start : startOfHour(addHours(new Date(), 1));
@@ -67,13 +73,14 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
 
     const baseData = {
       patientId: patientId || 'new-patient',
-      patientName: patientName || 'Paciente Sem Nome',
-      title: title || 'Consulta',
+      patientName: patientName || 'Cliente Sem Nome',
+      title: title || 'Atendimento',
       start: startDateTime,
       end: endDateTime,
       notes: notes,
       source: initialData?.source || 'manual',
-      tags: selectedTags
+      tags: selectedTags,
+      doctorId: selectedDoctorId
     };
 
     if (initialData) {
@@ -160,7 +167,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
                   <div className="flex items-center justify-between mb-2">
                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center">
                         <Sparkles className="w-3 h-3 mr-1" />
-                        Tarjetas de Procedimento
+                        Serviços Rápidos
                      </p>
                   </div>
                   
@@ -212,7 +219,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
                                     type="text" 
                                     value={newTagLabel}
                                     onChange={(e) => setNewTagLabel(e.target.value)}
-                                    placeholder="Nome do procedimento"
+                                    placeholder="Nome do serviço"
                                     className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
                                     autoFocus
                                 />
@@ -291,7 +298,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
                     <input 
                         ref={patientInputRef}
                         type="text" 
-                        placeholder="Nome do Paciente" 
+                        placeholder="Nome do Cliente" 
                         value={patientName}
                         onChange={handlePatientNameChange}
                         onFocus={() => setShowPatientSuggestions(true)}
@@ -326,8 +333,8 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
                                 ))
                             ) : (
                                 <div className="px-4 py-3 text-center text-sm text-gray-400">
-                                    <p>Nenhum paciente encontrado.</p>
-                                    <p className="text-xs mt-1">Um novo paciente será criado.</p>
+                                    <p>Nenhum cliente encontrado.</p>
+                                    <p className="text-xs mt-1">Um novo cliente será criado.</p>
                                 </div>
                             )}
                         </div>
@@ -336,11 +343,32 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
             </div>
 
             <div className="flex items-start space-x-4">
+                <Briefcase className="w-5 h-5 text-gray-400 mt-2" />
+                <div className="flex-1">
+                    <select
+                        value={selectedDoctorId}
+                        onChange={(e) => setSelectedDoctorId(e.target.value)}
+                        className="w-full bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+                    >
+                        {doctors.filter(d => d.active).length === 0 ? (
+                            <option value="">Nenhum profissional disponível</option>
+                        ) : (
+                            doctors.filter(d => d.active).map(doctor => (
+                                <option key={doctor.id} value={doctor.id}>
+                                    {doctor.name} - {doctor.specialty}
+                                </option>
+                            ))
+                        )}
+                    </select>
+                </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
                 <AlignLeft className="w-5 h-5 text-gray-400 mt-2" />
                 <div className="flex-1">
                     <textarea 
                         rows={3}
-                        placeholder="Adicionar descrição ou notas do prontuário"
+                        placeholder="Adicionar descrição ou observações"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         className="w-full bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 placeholder-gray-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"

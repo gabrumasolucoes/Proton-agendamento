@@ -59,8 +59,8 @@ export const Header: React.FC<HeaderProps> = ({
       answer: "Use os botões 'Dia', 'Semana' e 'Mês' no topo da tela para alternar entre diferentes visualizações do calendário."
     },
     {
-      question: "Como gerenciar meus pacientes?",
-      answer: "Acesse a aba 'Pacientes' no menu lateral para visualizar todos os pacientes cadastrados, adicionar novos, editar informações ou criar agendamentos para pacientes existentes."
+      question: "Como gerenciar meus clientes?",
+      answer: "Acesse a aba 'Clientes' no menu lateral para visualizar todos os clientes cadastrados, adicionar novos, editar informações ou criar agendamentos para clientes existentes."
     },
     {
       question: "Como visualizar relatórios e estatísticas?",
