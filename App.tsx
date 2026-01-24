@@ -334,6 +334,18 @@ const App: React.FC = () => {
       addNotification('Profissional Removido', 'Filtro de profissional atualizado.', 'info');
   };
 
+  const handleUpdateDoctor = async (updatedDoctor: DoctorProfile) => {
+      if (!user) return;
+      try {
+        await apiData.saveDoctor(updatedDoctor, user.id, isDemoMode);
+        setDoctors(prev => prev.map(d => d.id === updatedDoctor.id ? updatedDoctor : d));
+        addNotification('Profissional Atualizado', `${updatedDoctor.name} foi atualizado com sucesso.`, 'success');
+      } catch (e) {
+          console.error(e);
+          addNotification('Erro', 'Não foi possível atualizar o profissional.', 'alert');
+      }
+  };
+
   // --- Patient Management ---
   const handleAddPatient = async (newPatient: Patient) => {
       if (!user) return;
@@ -739,6 +751,8 @@ const App: React.FC = () => {
             doctors={doctors}
             onAddDoctor={handleAddDoctor}
             onRemoveDoctor={handleRemoveDoctor}
+            onUpdateDoctor={handleUpdateDoctor}
+            onToggleDoctor={handleToggleDoctor}
             currentUser={user}
             onUserUpdate={(updatedUser) => {
               setUser(updatedUser);
