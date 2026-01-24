@@ -34,6 +34,11 @@ export const Header: React.FC<HeaderProps> = ({
     onMarkAllRead,
     onClearNotifications
 }) => {
+  console.log(`📢 [Header] RENDERIZADO - Total de notificações: ${notifications?.length || 0}`);
+  if (notifications && notifications.length > 0) {
+      console.log(`📢 [Header] Notificações recebidas:`, notifications);
+  }
+  
   const monthName = format(currentDate, 'MMMM', { locale: ptBR });
   const year = format(currentDate, 'yyyy');
 

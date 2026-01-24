@@ -263,6 +263,7 @@ const App: React.FC = () => {
   const handleToday = () => setCurrentDate(new Date());
 
   const addNotification = (title: string, message: string, type: AppNotification['type'] = 'info') => {
+    console.log(`🔔 [addNotification] CHAMADA RECEBIDA - Title: "${title}", Message: "${message}", Type: ${type}`);
     const newNotif: AppNotification = {
       id: Math.random().toString(36).substr(2, 9),
       title,
@@ -271,7 +272,14 @@ const App: React.FC = () => {
       read: false,
       type
     };
-    setNotifications(prev => [newNotif, ...prev]);
+    console.log(`🔔 [addNotification] Notificação criada:`, newNotif);
+    setNotifications(prev => {
+      console.log(`🔔 [addNotification] Adicionando notificação. Total atual: ${prev.length}`);
+      const newArray = [newNotif, ...prev];
+      console.log(`🔔 [addNotification] Novo total: ${newArray.length}`);
+      return newArray;
+    });
+    console.log(`🔔 [addNotification] setNotifications chamado com sucesso`);
   };
 
   const handleCreateClick = (type: 'event' | 'task' | 'appointment') => {
