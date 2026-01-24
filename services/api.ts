@@ -178,8 +178,13 @@ export const apiData = {
           if (error) throw error;
           result = data;
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Erro ao salvar agendamento:", e);
+        // Se for um erro de validação (bloqueio/conflito), re-lançar para o App.tsx capturar
+        if (e.message && (e.message.includes('bloqueado') || e.message.includes('conflito') || e.message.includes('horário') || e.message.includes('disponível'))) {
+          throw e;
+        }
+        // Outros erros do banco (Supabase), retornar null
         return null;
     }
 
