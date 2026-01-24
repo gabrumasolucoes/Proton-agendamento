@@ -131,32 +131,42 @@ export const apiData = {
     // Check if ID is a valid UUID (length 36) to decide Insert vs Update
     const isNew = !apt.id || String(apt.id).length < 30; 
 
+    console.log(`💾 [saveAppointment] INÍCIO - isNew: ${isNew}, doctorId: ${apt.doctorId}, start: ${apt.start}`);
+
     if (isDemo) {
       return { ...apt, id: isNew ? Math.random().toString(36).substr(2, 9) : apt.id } as Appointment;
     }
 
     // VALIDAÇÃO 1: Verificar bloqueios de agenda (para novo E edição)
+    console.log(`🔍 [saveAppointment] Verificando bloqueios...`);
     const blocks = await apiAgendaBlocks.getBlocks(userId);
     const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
     if (isBlocked.blocked) {
+      console.error('❌ [saveAppointment] BLOQUEIO DETECTADO - INTERROMPENDO SALVAMENTO');
       console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
       console.error('❌ LANÇANDO ERRO DE BLOQUEIO PARA APP.TSX');
       const error = new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
       console.error('❌ Erro criado:', error.message);
-      throw error;
+      throw error; // ← Deve interromper AQUI
     }
+    console.log(`✅ [saveAppointment] Sem bloqueios`);
 
     // VALIDAÇÃO 2: Verificar conflito de horário (para novo E edição)
     // Ao editar, excluir o próprio appointment da verificação
+    console.log(`🔍 [saveAppointment] Verificando conflitos de horário...`);
     const appointmentIdToExclude = isNew ? null : apt.id;
     const hasConflict = await checkTimeConflict(apt.start, apt.end, apt.doctorId, userId, appointmentIdToExclude);
     if (hasConflict) {
+      console.error('❌ [saveAppointment] CONFLITO DETECTADO - INTERROMPENDO SALVAMENTO');
       console.error('❌ Conflito de horário detectado');
       console.error('❌ LANÇANDO ERRO DE CONFLITO PARA APP.TSX');
       const error = new Error('Já existe um agendamento neste horário para este profissional.');
       console.error('❌ Erro criado:', error.message);
-      throw error;
+      throw error; // ← Deve interromper AQUI
     }
+    console.log(`✅ [saveAppointment] Sem conflitos`);
+
+    console.log(`📝 [saveAppointment] Todas validações passaram - prosseguindo com salvamento no banco...`);
 
     const payload = {
       user_id: userId,
@@ -174,6 +184,7 @@ export const apiData = {
 
     let result;
     try {
+        console.log(`💾 [saveAppointment] Salvando no Supabase... (isNew: ${isNew})`);
         if (isNew) {
           // Remove ID from payload on insert to let DB generate UUID
           const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
@@ -184,8 +195,9 @@ export const apiData = {
           if (error) throw error;
           result = data;
         }
+        console.log(`✅ [saveAppointment] Salvo com sucesso no Supabase`);
     } catch (e: any) {
-        console.error("Erro ao salvar agendamento:", e);
+        console.error("❌ [saveAppointment] Erro ao salvar no Supabase:", e);
         // Se for um erro de validação (bloqueio/conflito), re-lançar para o App.tsx capturar
         if (e.message && (e.message.includes('bloqueado') || e.message.includes('conflito') || e.message.includes('horário') || e.message.includes('disponível'))) {
           throw e;
