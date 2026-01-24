@@ -135,27 +135,27 @@ export const apiData = {
       return { ...apt, id: isNew ? Math.random().toString(36).substr(2, 9) : apt.id } as Appointment;
     }
 
-    // Verificar bloqueios de agenda APENAS para novos agendamentos
-    if (isNew) {
-      const blocks = await apiAgendaBlocks.getBlocks(userId);
-      const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
-      if (isBlocked.blocked) {
-        console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
-        console.error('❌ LANÇANDO ERRO DE BLOQUEIO PARA APP.TSX');
-        const error = new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
-        console.error('❌ Erro criado:', error.message);
-        throw error;
-      }
+    // VALIDAÇÃO 1: Verificar bloqueios de agenda (para novo E edição)
+    const blocks = await apiAgendaBlocks.getBlocks(userId);
+    const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
+    if (isBlocked.blocked) {
+      console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
+      console.error('❌ LANÇANDO ERRO DE BLOQUEIO PARA APP.TSX');
+      const error = new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
+      console.error('❌ Erro criado:', error.message);
+      throw error;
+    }
 
-      // Verificar conflito de horário com outros agendamentos
-      const hasConflict = await checkTimeConflict(apt.start, apt.end, apt.doctorId, userId);
-      if (hasConflict) {
-        console.error('❌ Conflito de horário detectado');
-        console.error('❌ LANÇANDO ERRO DE CONFLITO PARA APP.TSX');
-        const error = new Error('Já existe um agendamento neste horário para este profissional.');
-        console.error('❌ Erro criado:', error.message);
-        throw error;
-      }
+    // VALIDAÇÃO 2: Verificar conflito de horário (para novo E edição)
+    // Ao editar, excluir o próprio appointment da verificação
+    const appointmentIdToExclude = isNew ? null : apt.id;
+    const hasConflict = await checkTimeConflict(apt.start, apt.end, apt.doctorId, userId, appointmentIdToExclude);
+    if (hasConflict) {
+      console.error('❌ Conflito de horário detectado');
+      console.error('❌ LANÇANDO ERRO DE CONFLITO PARA APP.TSX');
+      const error = new Error('Já existe um agendamento neste horário para este profissional.');
+      console.error('❌ Erro criado:', error.message);
+      throw error;
     }
 
     const payload = {
@@ -435,7 +435,13 @@ function checkIfDateIsBlocked(blocks: AgendaBlock[], date: Date, doctorId: strin
 }
 
 // Função auxiliar para verificar conflito de horário
-async function checkTimeConflict(startTime: Date, endTime: Date, doctorId: string | null, userId: string): Promise<boolean> {
+async function checkTimeConflict(
+  startTime: Date, 
+  endTime: Date, 
+  doctorId: string | null, 
+  userId: string,
+  excludeAppointmentId?: string | null // NOVO: ID do appointment a excluir da busca (ao editar)
+): Promise<boolean> {
   try {
     let query = supabase
       .from('appointments')
@@ -446,6 +452,12 @@ async function checkTimeConflict(startTime: Date, endTime: Date, doctorId: strin
     // Se tem doctorId, verificar apenas para este profissional
     if (doctorId) {
       query = query.eq('doctor_id', doctorId);
+    }
+
+    // NOVO: Ao editar, excluir o próprio appointment da verificação
+    if (excludeAppointmentId) {
+      query = query.neq('id', excludeAppointmentId);
+      console.log(`🔍 [checkTimeConflict] Excluindo appointment ${excludeAppointmentId} da busca (edição)`);
     }
 
     // Verificar sobreposição de horários
@@ -460,7 +472,12 @@ async function checkTimeConflict(startTime: Date, endTime: Date, doctorId: strin
       return false; // Fail-open: em caso de erro, permitir agendamento
     }
 
-    return (data && data.length > 0); // true = tem conflito
+    const hasConflict = data && data.length > 0;
+    if (hasConflict) {
+      console.log(`⚠️ [checkTimeConflict] Conflito encontrado: ${data.length} agendamento(s)`);
+    }
+
+    return hasConflict; // true = tem conflito
   } catch (e) {
     console.error('❌ Exceção ao verificar conflito:', e);
     return false; // Fail-open
