@@ -426,23 +426,29 @@ const App: React.FC = () => {
         doctorId: appointmentData.doctorId || doctors[0]?.id
     };
 
-    const savedApt = await apiData.saveAppointment(appointmentToSave, targetUserId, isDemoMode);
-    
-    if (savedApt) {
-        if ('id' in appointmentData) {
-            // Edit
-            setAppointments(prev => prev.map(apt => apt.id === savedApt.id ? savedApt : apt));
-            addNotification('Agendamento Atualizado', `Atendimento de ${finalPatientName} foi alterado.`, 'success');
+    try {
+        const savedApt = await apiData.saveAppointment(appointmentToSave, targetUserId, isDemoMode);
+        
+        if (savedApt) {
+            if ('id' in appointmentData) {
+                // Edit
+                setAppointments(prev => prev.map(apt => apt.id === savedApt.id ? savedApt : apt));
+                addNotification('Agendamento Atualizado', `Atendimento de ${finalPatientName} foi alterado.`, 'success');
+            } else {
+                // Create
+                setAppointments(prev => [...prev, savedApt]);
+                addNotification('Novo Agendamento', `Atendimento para ${finalPatientName} criado.`, 'success');
+            }
+            setIsCreateModalOpen(false);
+            setEditingAppointment(null);
+            setSelectedAppointment(null);
         } else {
-            // Create
-            setAppointments(prev => [...prev, savedApt]);
-            addNotification('Novo Agendamento', `Atendimento para ${finalPatientName} criado.`, 'success');
+            addNotification('Erro', 'Não foi possível salvar o agendamento. Verifique se a data não está bloqueada.', 'error');
         }
-        setIsCreateModalOpen(false);
-        setEditingAppointment(null);
-        setSelectedAppointment(null);
-    } else {
-        addNotification('Erro', 'Não foi possível salvar o agendamento. Verifique se a data não está bloqueada.', 'error');
+    } catch (error: any) {
+        // Capturar erro de bloqueio ou outros erros
+        addNotification('Dia Bloqueado', error.message || 'Não foi possível salvar o agendamento.', 'error');
+        console.error('Erro ao salvar agendamento:', error);
     }
   };
 

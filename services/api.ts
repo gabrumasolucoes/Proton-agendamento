@@ -143,6 +143,13 @@ export const apiData = {
         console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
         throw new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
       }
+
+      // Verificar conflito de horário com outros agendamentos
+      const hasConflict = await checkTimeConflict(apt.start, apt.end, apt.doctorId, userId);
+      if (hasConflict) {
+        console.error('❌ Conflito de horário detectado');
+        throw new Error('Já existe um agendamento neste horário para este profissional.');
+      }
     }
 
     const payload = {
@@ -414,4 +421,37 @@ function checkIfDateIsBlocked(blocks: AgendaBlock[], date: Date, doctorId: strin
   }
 
   return { blocked: false };
+}
+
+// Função auxiliar para verificar conflito de horário
+async function checkTimeConflict(startTime: Date, endTime: Date, doctorId: string | null, userId: string): Promise<boolean> {
+  try {
+    let query = supabase
+      .from('appointments')
+      .select('id')
+      .eq('user_id', userId)
+      .neq('status', 'cancelled');
+
+    // Se tem doctorId, verificar apenas para este profissional
+    if (doctorId) {
+      query = query.eq('doctor_id', doctorId);
+    }
+
+    // Verificar sobreposição de horários
+    // Um agendamento conflita se:
+    // - Começa antes do fim do novo agendamento E
+    // - Termina depois do início do novo agendamento
+    const { data, error } = await query
+      .or(`and(start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()})`);
+
+    if (error) {
+      console.error('❌ Erro ao verificar conflito de horário:', error);
+      return false; // Fail-open: em caso de erro, permitir agendamento
+    }
+
+    return (data && data.length > 0); // true = tem conflito
+  } catch (e) {
+    console.error('❌ Exceção ao verificar conflito:', e);
+    return false; // Fail-open
+  }
 }
