@@ -1,13 +1,14 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, User, Phone, Mail, Calendar, Clock, ChevronRight, History, MoreHorizontal, Sparkles, AlertCircle, UserPlus, X, Save, Edit3, Trash2 } from 'lucide-react';
-import { Appointment, Patient } from '../types';
+import { Search, User, Phone, Mail, Calendar, Clock, ChevronRight, History, MoreHorizontal, Sparkles, AlertCircle, UserPlus, X, Save, Edit3, Trash2, Briefcase } from 'lucide-react';
+import { Appointment, Patient, DoctorProfile } from '../types';
 import { format, isFuture, isPast, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface PatientsViewProps {
   patients: Patient[];
   appointments: Appointment[];
+  doctors: DoctorProfile[];
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onAddPatient: (patient: Patient) => void;
@@ -26,6 +27,7 @@ interface PatientSummary extends Omit<Patient, 'history'> {
 export const PatientsView: React.FC<PatientsViewProps> = ({ 
     patients, 
     appointments, 
+    doctors,
     searchTerm, 
     onSearchChange, 
     onAddPatient,
@@ -407,6 +409,15 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                                                         <p className="text-sm text-slate-500 font-medium mt-0.5 capitalize">
                                                             {format(apt.start, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                                         </p>
+                                                        {/* Mostrar profissional que atendeu */}
+                                                        {apt.doctorId && doctors && (
+                                                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                                                <Briefcase className="w-3 h-3" />
+                                                                <span className="font-medium">
+                                                                    {doctors.find(d => d.id === apt.doctorId)?.name || 'Profissional não encontrado'}
+                                                                </span>
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 self-start">
                                                         <Clock className="w-3.5 h-3.5 text-slate-400" />

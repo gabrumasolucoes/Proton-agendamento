@@ -292,15 +292,49 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                             {weekDays.map((day, dayIndex) => {
                                 const dayAppointments = appointments.filter(apt => isSameDay(apt.start, day));
                                 
+                                // Detectar agendamentos simultâneos (sobreposição de horários)
+                                const appointmentsWithOverlap = dayAppointments.map((apt, idx) => {
+                                    // Encontrar todos os agendamentos que se sobrepõem com este
+                                    const overlapping = dayAppointments.filter((other, otherIdx) => {
+                                        if (otherIdx === idx) return false;
+                                        // Verificar se há sobreposição de horários
+                                        return (apt.start < other.end && apt.end > other.start);
+                                    });
+                                    
+                                    // Calcular posição horizontal (coluna)
+                                    const columnIndex = overlapping.filter((other, otherIdx) => 
+                                        dayAppointments.findIndex(a => a.id === other.id) < idx
+                                    ).length;
+                                    
+                                    const totalColumns = overlapping.length + 1;
+                                    
+                                    return {
+                                        ...apt,
+                                        columnIndex,
+                                        totalColumns
+                                    };
+                                });
+                                
                                 return (
                                     <div key={dayIndex} className="flex-1 relative h-full pointer-events-auto px-1">
-                                        {dayAppointments.map(apt => {
+                                        {appointmentsWithOverlap.map(apt => {
                                             const styles = getAppointmentStyles(apt, viewMode);
                                             // @ts-ignore
                                             const { style, cardClasses, textClasses, borderAccent } = styles;
                                             
                                             const matches = isMatch(apt);
                                             const opacityClass = matches ? 'opacity-100 scale-100 z-10' : 'opacity-20 grayscale scale-95 z-0';
+
+                                            // Calcular largura e posição horizontal para agendamentos simultâneos
+                                            const widthPercent = apt.totalColumns > 1 ? (100 / apt.totalColumns) : 100;
+                                            const leftPercent = apt.totalColumns > 1 ? (apt.columnIndex * widthPercent) : 0;
+                                            
+                                            const positionStyle = {
+                                                ...style,
+                                                width: `${widthPercent - 1}%`, // -1% para gap
+                                                left: `${leftPercent}%`,
+                                                right: 'auto'
+                                            };
 
                                             return (
                                                 <button
@@ -312,8 +346,8 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                     }}
                                                     disabled={isReadOnly}
                                                     // @ts-ignore
-                                                    style={style}
-                                                    className={`absolute left-1 right-1 rounded-xl text-left overflow-hidden transition-all duration-300 ${isReadOnly ? 'cursor-default' : 'hover:shadow-lg hover:-translate-y-1 hover:z-30 cursor-pointer'} group ${cardClasses} ${opacityClass}`}
+                                                    style={positionStyle}
+                                                    className={`absolute rounded-xl text-left overflow-hidden transition-all duration-300 ${isReadOnly ? 'cursor-default' : 'hover:shadow-lg hover:-translate-y-1 hover:z-30 cursor-pointer'} group ${cardClasses} ${opacityClass}`}
                                                 >
                                                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${borderAccent}`}></div>
                                                     <div className="pl-3 pr-2 py-2 h-full flex flex-col">

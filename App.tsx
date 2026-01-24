@@ -529,6 +529,7 @@ const App: React.FC = () => {
                 <PatientsView 
                     patients={patients}
                     appointments={filteredAppointments} 
+                    doctors={doctors}
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
                     onAddPatient={mirrorMode.isActive ? () => {} : handleAddPatient}

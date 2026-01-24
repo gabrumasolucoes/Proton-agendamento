@@ -249,9 +249,26 @@ export const apiData = {
           active: doctor.active
       };
 
-      const { data, error } = await supabase.from('doctors').insert([payload]).select().single();
-      if(error) throw error;
-      return data;
+      // Se tem ID, fazer UPDATE; senão fazer INSERT
+      if (doctor.id) {
+          const { data, error } = await supabase
+              .from('doctors')
+              .update(payload)
+              .eq('id', doctor.id)
+              .eq('user_id', userId) // Segurança: só atualiza se for do usuário
+              .select()
+              .single();
+          if(error) throw error;
+          return data;
+      } else {
+          const { data, error } = await supabase
+              .from('doctors')
+              .insert([payload])
+              .select()
+              .single();
+          if(error) throw error;
+          return data;
+      }
   },
   
   async deleteDoctor(id: string, isDemo: boolean) {
