@@ -13,6 +13,7 @@ import { ReportsView } from './components/ReportsView';
 import { SettingsModal } from './components/SettingsModal';
 import { AutoLoginHandler } from './components/AutoLoginHandler';
 import { UsersManagementModal } from './components/UsersManagementModal';
+import { Toast } from './components/Toast'; // NOVO
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
 import { apiData, apiAuth, apiAgendaBlocks } from './services/api';
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'calendar' | 'patients' | 'reports'>('calendar');
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [activeToast, setActiveToast] = useState<AppNotification | null>(null); // NOVO: Toast ativo
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [mirrorMode, setMirrorMode] = useState<{
     isActive: boolean;
@@ -280,6 +282,12 @@ const App: React.FC = () => {
       return newArray;
     });
     console.log(`🔔 [addNotification] setNotifications chamado com sucesso`);
+    
+    // NOVO: Mostrar toast para erros e avisos
+    if (type === 'error' || type === 'warning') {
+      console.log(`🍞 [addNotification] Exibindo TOAST para tipo ${type}`);
+      setActiveToast(newNotif);
+    }
   };
 
   const handleCreateClick = (type: 'event' | 'task' | 'appointment') => {
@@ -787,6 +795,14 @@ const App: React.FC = () => {
             currentUser={user}
             onStartMirrorMode={handleStartMirrorMode}
           />
+      )}
+      
+      {/* NOVO: Toast para erros e avisos */}
+      {activeToast && (
+        <Toast 
+          notification={activeToast} 
+          onClose={() => setActiveToast(null)} 
+        />
       )}
     </div>
   );
