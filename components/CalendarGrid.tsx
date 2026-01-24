@@ -14,8 +14,9 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { Appointment, CalendarViewMode } from '../types';
 import { HOURS_OF_OPERATION } from '../constants';
-import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle, CalendarOff } from 'lucide-react';
+import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle, CalendarOff, Briefcase } from 'lucide-react';
 import type { AgendaBlock } from '../services/api';
+import type { DoctorProfile } from '../types';
 
 interface CalendarGridProps {
   currentDate: Date;
@@ -25,10 +26,13 @@ interface CalendarGridProps {
   searchTerm: string;
   isReadOnly?: boolean;
   agendaBlocks?: AgendaBlock[];
+  doctors?: DoctorProfile[]; // Lista de profissionais para exibir nomes
 }
 
 function isDayBlocked(day: Date, blocks: AgendaBlock[]): boolean {
-  const active = (blocks || []).filter((b) => b.active);
+  // Só mostrar bloqueio visual se for bloqueio da CLÍNICA INTEIRA (doctor_id = null)
+  // Bloqueios individuais por profissional não devem afetar a visualização geral
+  const active = (blocks || []).filter((b) => b.active && b.doctor_id === null);
   const yyyy = day.getFullYear();
   const mm = String(day.getMonth() + 1).padStart(2, '0');
   const dd = String(day.getDate()).padStart(2, '0');
@@ -42,13 +46,19 @@ function isDayBlocked(day: Date, blocks: AgendaBlock[]): boolean {
   return false;
 }
 
-export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMode, appointments, onSelectAppointment, searchTerm, isReadOnly = false, agendaBlocks }) => {
+export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMode, appointments, onSelectAppointment, searchTerm, isReadOnly = false, agendaBlocks, doctors = [] }) => {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Função auxiliar para pegar o nome do profissional
+  const getDoctorName = (doctorId: string): string => {
+    const doctor = doctors.find(d => d.id === doctorId);
+    return doctor ? doctor.name : '';
+  };
 
   const getAppointmentStyles = (apt: Appointment, mode: CalendarViewMode) => {
     // Styles vary slightly based on view mode (compact vs full)
@@ -176,6 +186,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                   {dayAppointments.slice(0, 4).map(apt => {
                                       const { cardClasses, textClasses, borderAccent } = getAppointmentStyles(apt, 'month');
                                       const matches = isMatch(apt);
+                                      const doctorName = getDoctorName(apt.doctorId);
                                       return (
                                           <button
                                               key={apt.id}
@@ -190,6 +201,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${borderAccent.replace('bg-', 'bg-')}`}></div>
                                               <span className={`font-medium truncate flex-1 min-w-0 ${textClasses}`}>
                                                   {format(apt.start, 'HH:mm')} {apt.patientName}
+                                                  {doctorName && <span className="text-[9px] opacity-70 ml-1">• {doctorName}</span>}
                                               </span>
                                               {apt.confirmedAt && <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" aria-label="Cliente confirmou" />}
                                           </button>
@@ -372,8 +384,14 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                             {apt.title}
                                                         </div>
                                                         
-                                                        <div className="text-[11px] text-slate-600/90 truncate font-medium flex-shrink-0">
-                                                            {apt.patientName}
+                                                        <div className="text-[11px] text-slate-600/90 font-medium flex-shrink-0 flex flex-col gap-0.5">
+                                                            <span className="truncate">{apt.patientName}</span>
+                                                            {getDoctorName(apt.doctorId) && (
+                                                                <span className="truncate text-[10px] text-slate-500 flex items-center gap-1">
+                                                                    <Briefcase className="w-2.5 h-2.5" />
+                                                                    {getDoctorName(apt.doctorId)}
+                                                                </span>
+                                                            )}
                                                         </div>
 
                                                         {/* Tags */}

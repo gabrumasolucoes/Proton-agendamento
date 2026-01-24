@@ -85,7 +85,8 @@ async function checkAvailabilityHandler(req, res) {
         }
 
         // Bloqueios de agenda (fail-open: se falhar, blocks=[] e segue)
-        const blocks = await getBlocksForUser(supabase, protonUserId);
+        // Passar doctorId para verificar bloqueios específicos do profissional
+        const blocks = await getBlocksForUser(supabase, protonUserId, doctorId);
         const { blocked, message: blockMessage } = isDateBlocked(blocks, targetDate);
         if (blocked) {
             const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];

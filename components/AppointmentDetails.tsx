@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { X, Calendar, Clock, User, FileText, Sparkles, MessageCircle, Bot, WifiOff, Play, Edit3, Trash2, CheckCircle, AlertCircle, BrainCircuit } from 'lucide-react';
-import { Appointment, AiAnalysisResult } from '../types';
+import { X, Calendar, Clock, User, FileText, Sparkles, MessageCircle, Bot, WifiOff, Play, Edit3, Trash2, CheckCircle, AlertCircle, BrainCircuit, Briefcase } from 'lucide-react';
+import { Appointment, AiAnalysisResult, DoctorProfile } from '../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { analyzeAppointment } from '../services/geminiService';
@@ -11,13 +11,20 @@ interface AppointmentDetailsProps {
   onClose: () => void;
   onUpdateStatus: (id: string, status: Appointment['status']) => void;
   onEdit: (appointment: Appointment) => void;
+  doctors?: DoctorProfile[]; // Lista de profissionais
 }
 
-export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, onClose, onUpdateStatus, onEdit }) => {
+export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, onClose, onUpdateStatus, onEdit, doctors = [] }) => {
   const [analysis, setAnalysis] = useState<AiAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   if (!appointment) return null;
+
+  // Função auxiliar para pegar o nome do profissional
+  const getDoctorName = (): string => {
+    const doctor = doctors.find(d => d.id === appointment.doctorId);
+    return doctor ? `${doctor.name} (${doctor.specialty})` : '';
+  };
 
   const handleAiAnalysis = async () => {
     setLoading(true);
@@ -122,6 +129,17 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                         <p className="text-xs text-slate-500 mt-0.5">ID: {appointment.patientId.slice(0, 6)}</p>
                     </div>
                 </div>
+                {getDoctorName() && (
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Briefcase className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Profissional</p>
+                            <p className="text-sm font-medium text-slate-800">{getDoctorName()}</p>
+                        </div>
+                    </div>
+                )}
             </div>
           </div>
 

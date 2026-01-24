@@ -534,6 +534,7 @@ const App: React.FC = () => {
                     searchTerm={searchTerm}
                     isReadOnly={mirrorMode.isActive}
                     agendaBlocks={agendaBlocks}
+                    doctors={doctors}
                 />
               );
           case 'patients':
@@ -721,6 +722,7 @@ const App: React.FC = () => {
             onClose={() => setSelectedAppointment(null)}
             onUpdateStatus={mirrorMode.isActive ? undefined : handleUpdateAppointmentStatus}
             onEdit={mirrorMode.isActive ? undefined : handleEditClick}
+            doctors={doctors}
         />
       )}
 
