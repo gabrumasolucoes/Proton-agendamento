@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { Appointment, DoctorProfile, Patient, User } from '../types';
 import { MOCK_APPOINTMENTS, MOCK_PATIENTS } from '../constants';
+import { protonCache } from '../lib/proton-cache';
 
 // --- Auth Helpers ---
 
@@ -271,11 +272,28 @@ export const apiData = {
         return [{ id: 'doc-1', name: 'Dr. Usuário Demo', specialty: 'Especialista', color: '#ec4899', active: true }];
     }
 
-    const { data, error } = await supabase.from('doctors').select('*').eq('user_id', userId);
-    if (error || !data || data.length === 0) {
-        return [];
+    // FASE 1: Tentar carregar do cache primeiro (instantâneo)
+    const cachedDoctors = await protonCache.get<DoctorProfile[]>('doctors', userId);
+    
+    if (cachedDoctors) {
+      // Cache hit - retornar do cache e buscar atualizações em background (stale-while-revalidate)
+      console.log(`✅ [apiData] Usando cache para doctors (${cachedDoctors.length} profissionais)`);
+      
+      // Buscar atualizações em background (não bloquear UI)
+      getDoctorsFromServer(userId).then((serverDoctors) => {
+        if (serverDoctors && JSON.stringify(serverDoctors) !== JSON.stringify(cachedDoctors)) {
+          // Dados mudaram no servidor - atualizar cache
+          protonCache.set('doctors', userId, serverDoctors).catch(() => {});
+        }
+      }).catch(() => {
+        // Ignorar erros em background
+      });
+      
+      return cachedDoctors;
     }
-    return data as DoctorProfile[];
+    
+    // Cache miss - buscar do servidor
+    return await getDoctorsFromServer(userId);
   },
 
   async saveDoctor(doctor: any, userId: string, isDemo: boolean): Promise<DoctorProfile> {
@@ -289,6 +307,8 @@ export const apiData = {
           active: doctor.active
       };
 
+      let savedDoctor: DoctorProfile;
+
       // Se tem ID, fazer UPDATE; senão fazer INSERT
       if (doctor.id) {
           const { data, error } = await supabase
@@ -299,7 +319,7 @@ export const apiData = {
               .select()
               .single();
           if(error) throw error;
-          return data;
+          savedDoctor = data;
       } else {
           const { data, error } = await supabase
               .from('doctors')
@@ -307,13 +327,25 @@ export const apiData = {
               .select()
               .single();
           if(error) throw error;
-          return data;
+          savedDoctor = data;
       }
+      
+      // INVALIDAÇÃO: Invalidar cache após salvar profissional
+      protonCache.invalidate('doctors', userId).catch(() => {
+        // Ignorar erros de invalidação (não crítico)
+      });
+      
+      return savedDoctor;
   },
   
-  async deleteDoctor(id: string, isDemo: boolean) {
+  async deleteDoctor(id: string, userId: string, isDemo: boolean) {
       if(isDemo) return;
       await supabase.from('doctors').delete().eq('id', id);
+      
+      // INVALIDAÇÃO: Invalidar cache após deletar profissional
+      protonCache.invalidate('doctors', userId).catch(() => {
+        // Ignorar erros de invalidação (não crítico)
+      });
   }
 };
 
@@ -338,16 +370,28 @@ export interface AgendaBlock {
 
 export const apiAgendaBlocks = {
   async getBlocks(userId: string): Promise<AgendaBlock[]> {
-    const { data, error } = await supabase
-      .from('agenda_blocks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching agenda_blocks:', error);
-      return [];
+    // FASE 1: Tentar carregar do cache primeiro (instantâneo)
+    const cachedBlocks = await protonCache.get<AgendaBlock[]>('agenda_blocks', userId);
+    
+    if (cachedBlocks) {
+      // Cache hit - retornar do cache e buscar atualizações em background (stale-while-revalidate)
+      console.log(`✅ [apiAgendaBlocks] Usando cache para agenda blocks (${cachedBlocks.length} bloqueios)`);
+      
+      // Buscar atualizações em background (não bloquear UI)
+      getBlocksFromServer(userId).then((serverBlocks) => {
+        if (serverBlocks && JSON.stringify(serverBlocks) !== JSON.stringify(cachedBlocks)) {
+          // Dados mudaram no servidor - atualizar cache
+          protonCache.set('agenda_blocks', userId, serverBlocks).catch(() => {});
+        }
+      }).catch(() => {
+        // Ignorar erros em background
+      });
+      
+      return cachedBlocks;
     }
-    return (data || []) as AgendaBlock[];
+    
+    // Cache miss - buscar do servidor
+    return await getBlocksFromServer(userId);
   },
 
   async insert(userId: string, block: { 
@@ -377,27 +421,92 @@ export const apiAgendaBlocks = {
       console.error('Error inserting agenda_block:', error);
       return null;
     }
+    
+    // INVALIDAÇÃO: Invalidar cache após inserir novo bloqueio
+    protonCache.invalidate('agenda_blocks', userId).catch(() => {
+      // Ignorar erros de invalidação (não crítico)
+    });
+    
     return data as AgendaBlock;
   },
 
-  async update(id: string, patch: { active?: boolean; label?: string | null }): Promise<boolean> {
+  async update(id: string, patch: { active?: boolean; label?: string | null }, userId?: string): Promise<boolean> {
     const { error } = await supabase.from('agenda_blocks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
       console.error('Error updating agenda_block:', error);
       return false;
     }
+    
+    // INVALIDAÇÃO: Invalidar cache após atualizar bloqueio (se userId fornecido)
+    if (userId) {
+      protonCache.invalidate('agenda_blocks', userId).catch(() => {
+        // Ignorar erros de invalidação (não crítico)
+      });
+    }
+    
     return true;
   },
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, userId?: string): Promise<boolean> {
     const { error } = await supabase.from('agenda_blocks').delete().eq('id', id);
     if (error) {
       console.error('Error deleting agenda_block:', error);
       return false;
     }
+    
+    // INVALIDAÇÃO: Invalidar cache após deletar bloqueio (se userId fornecido)
+    if (userId) {
+      protonCache.invalidate('agenda_blocks', userId).catch(() => {
+        // Ignorar erros de invalidação (não crítico)
+      });
+    }
+    
     return true;
   },
 };
+
+/**
+ * Busca bloqueios do servidor (função auxiliar privada)
+ */
+async function getBlocksFromServer(userId: string): Promise<AgendaBlock[]> {
+  const { data, error } = await supabase
+    .from('agenda_blocks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Error fetching agenda_blocks:', error);
+    return [];
+  }
+  
+  const blocks = (data || []) as AgendaBlock[];
+  
+  // Salvar no cache para próxima vez (não bloquear retorno)
+  protonCache.set('agenda_blocks', userId, blocks).catch(() => {
+    // Ignorar erros de cache (fallback seguro)
+  });
+  
+  return blocks;
+}
+
+/**
+ * Busca profissionais do servidor (função auxiliar privada)
+ */
+async function getDoctorsFromServer(userId: string): Promise<DoctorProfile[]> {
+  const { data, error } = await supabase.from('doctors').select('*').eq('user_id', userId);
+  if (error || !data || data.length === 0) {
+      return [];
+  }
+  
+  const doctors = data as DoctorProfile[];
+  
+  // Salvar no cache para próxima vez (não bloquear retorno)
+  protonCache.set('doctors', userId, doctors).catch(() => {
+    // Ignorar erros de cache (fallback seguro)
+  });
+  
+  return doctors;
+}
 
 // Função auxiliar para verificar se uma data está bloqueada
 // Considera bloqueios de clínica inteira (doctor_id = null) e do profissional específico

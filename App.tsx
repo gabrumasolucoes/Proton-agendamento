@@ -242,6 +242,15 @@ const App: React.FC = () => {
       if (!isDemoMode) {
           await apiAuth.signOut();
       }
+      
+      // Limpar cache ao fazer logout
+      if (user) {
+          const { protonCache } = await import('./lib/proton-cache');
+          protonCache.clearUser(user.id).catch(() => {
+              // Ignorar erros de limpeza de cache
+          });
+      }
+      
       setUser(null);
       setAppointments([]);
       setPatients([]);
@@ -344,10 +353,10 @@ const App: React.FC = () => {
   };
 
   const handleRemoveDoctor = async (id: string) => {
-      if (!user) return;
-      await apiData.deleteDoctor(id, isDemoMode);
-      setDoctors(prev => prev.filter(d => d.id !== id));
-      addNotification('Profissional Removido', 'Filtro de profissional atualizado.', 'info');
+    if (!user) return;
+    await apiData.deleteDoctor(id, user.id, isDemoMode);
+    setDoctors(prev => prev.filter(d => d.id !== id));
+    addNotification('Profissional Removido', 'Filtro de profissional atualizado.', 'info');
   };
 
   const handleUpdateDoctor = async (updatedDoctor: DoctorProfile) => {
@@ -608,7 +617,15 @@ const App: React.FC = () => {
   };
 
   // Função para desativar modo mirror (voltar ao admin)
-  const handleStopMirrorMode = () => {
+  const handleStopMirrorMode = async () => {
+      // Limpar cache do usuário visualizado antes de sair do mirror mode
+      if (mirrorMode.userId) {
+          const { protonCache } = await import('./lib/proton-cache');
+          protonCache.clearUser(mirrorMode.userId).catch(() => {
+              // Ignorar erros de limpeza de cache
+          });
+      }
+      
       setMirrorMode({
           isActive: false,
           userId: null,

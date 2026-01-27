@@ -157,14 +157,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleToggleBlock = async (id: string, active: boolean) => {
-    const ok = await apiAgendaBlocks.update(id, { active });
-    if (ok) setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, active } : b)));
+    if (!currentUser?.id) return;
+    const ok = await apiAgendaBlocks.update(id, { active }, currentUser.id);
+    if (ok) {
+      setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, active } : b)));
+      // Cache já é invalidado automaticamente em apiAgendaBlocks.update
+    }
   };
 
   const handleDeleteBlock = async (id: string) => {
     if (!window.confirm('Remover este bloqueio?')) return;
-    const ok = await apiAgendaBlocks.delete(id);
-    if (ok) setBlocks((prev) => prev.filter((b) => b.id !== id));
+    if (!currentUser?.id) return;
+    const ok = await apiAgendaBlocks.delete(id, currentUser.id);
+    if (ok) {
+      setBlocks((prev) => prev.filter((b) => b.id !== id));
+      // Cache já é invalidado automaticamente em apiAgendaBlocks.delete
+    }
   };
 
   const handleAdd = (e: React.FormEvent) => {
