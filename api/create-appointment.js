@@ -151,12 +151,12 @@ async function createAppointmentHandler(req, res) {
         }
 
         // 5. Retornar sucesso com detalhes
-        // IMPORTANTE: startDate vem em UTC do SDR. Para exibir em BRT:
-        // - toLocaleDateString com timeZone converte a DATA corretamente
-        // - toLocaleTimeString SEM timeZone interpreta UTC como local (errado!)
-        // - Solução: criar Date em BRT explicitamente
-        const startDateBRT = new Date(startDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-        
+        // Exibir data e hora sempre em BRT (America/Sao_Paulo), independente do TZ do servidor.
+        // SDR envia dateTime em ISO com -03:00 (ver HORARIO_TIMEZONE_SDR_PROTON.md).
+        const BRT = 'America/Sao_Paulo';
+        const dateStr = startDate.toLocaleDateString('pt-BR', { timeZone: BRT });
+        const timeStr = startDate.toLocaleTimeString('pt-BR', { timeZone: BRT, hour: '2-digit', minute: '2-digit' });
+
         return res.status(201).json({
             success: true,
             message: 'Agendamento criado com sucesso!',
@@ -164,12 +164,12 @@ async function createAppointmentHandler(req, res) {
                 id: appointment.id,
                 patientName: patientName,
                 doctorName: doctor?.name || 'A definir',
-                date: startDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
-                time: startDateBRT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                date: dateStr,
+                time: timeStr,
                 procedure: procedureType,
                 status: 'pending'
             },
-            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${startDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}\n⏰ Horário: ${startDateBRT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n👤 Profissional: ${doctor?.name || 'A definir'}\n📋 Assunto: ${procedureType}\n\nAguardamos você!`
+            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${dateStr}\n⏰ Horário: ${timeStr}\n👤 Profissional: ${doctor?.name || 'A definir'}\n📋 Assunto: ${procedureType}\n\nAguardamos você!`
         });
 
     } catch (error) {
