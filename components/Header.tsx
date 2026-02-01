@@ -77,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       question: "Como atualizar minhas informações pessoais?",
-      answer: "Acesse 'Configurações' no menu lateral e vá para a aba 'Conta'. Você pode atualizar seu nome e o nome da clínica. O email não pode ser alterado."
+      answer: "Acesse 'Configurações' no menu lateral e vá para a aba 'Conta'. Você pode atualizar seu nome e o nome da empresa. O email não pode ser alterado."
     },
     {
       question: "O que significa 'Modo espelho' para admin?",

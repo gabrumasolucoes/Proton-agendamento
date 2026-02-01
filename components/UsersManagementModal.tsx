@@ -745,7 +745,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                                                     <p className="text-slate-900 font-semibold">{userData.user.email}</p>
                                                                 </div>
                                                                 <div>
-                                                                    <span className="text-slate-500">Clínica:</span>
+                                                                    <span className="text-slate-500">Empresa:</span>
                                                                     <p className="text-slate-900 font-semibold">{userData.user.clinicName}</p>
                                                                 </div>
                                                                 <div>
@@ -1019,7 +1019,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Clínica (opcional)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Empresa (opcional)</label>
                                 <input
                                     type="text"
                                     value={createUserDialog.clinicName}
@@ -1028,7 +1028,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                         clinicName: e.target.value
                                     })}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="Nome da clínica"
+                                    placeholder="Nome da empresa"
                                 />
                             </div>
                             <div>

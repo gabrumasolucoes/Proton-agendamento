@@ -113,7 +113,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         desc += ` • 👤 ${doctor.name}`;
       }
     } else {
-      desc += ` • 🏢 Clínica inteira`;
+      desc += ` • 🏢 Empresa`;
     }
     
     return desc;
@@ -331,7 +331,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Header */}
         <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-200">
            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-             Configurações da Clínica
+             Configurações da Empresa
            </h2>
            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-200 transition-colors">
              <X className="w-5 h-5 text-slate-500" />
@@ -525,7 +525,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="space-y-6 max-w-md">
                         <div>
                             <h3 className="text-base font-bold text-slate-800 mb-1">Informações da Conta</h3>
-                            <p className="text-sm text-slate-500 mb-6">Atualize suas informações pessoais e da clínica.</p>
+                            <p className="text-sm text-slate-500 mb-6">Atualize suas informações pessoais e da empresa.</p>
                             
                             <form onSubmit={handleSaveProfile} className="space-y-6">
                                 {/* Email (read-only) */}
@@ -558,17 +558,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     />
                                 </div>
 
-                                {/* Clínica */}
+                                {/* Empresa */}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-2">
                                         <Building2 className="w-4 h-4 inline mr-1" />
-                                        Nome da Clínica
+                                        Nome da Empresa
                                     </label>
                                     <input 
                                         type="text" 
                                         value={userClinic}
                                         onChange={(e) => setUserClinic(e.target.value)}
-                                        placeholder="Nome da sua clínica"
+                                        placeholder="Nome da sua empresa"
                                         className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                         required
                                     />
@@ -620,7 +620,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     onChange={(e) => setSelectedDoctorFilter(e.target.value)}
                                     className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 >
-                                    <option value="all">🏢 Clínica Inteira (todos os profissionais)</option>
+                                    <option value="all">🏢 Empresa (todos os profissionais)</option>
                                     {doctors.filter(d => d.active).map(doc => (
                                         <option key={doc.id} value={doc.id}>
                                             👤 {doc.name} ({doc.specialty})
@@ -817,7 +817,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <option value="America/Bahia">Salvador (UTC-3)</option>
                                         </select>
                                         <p className="text-xs text-slate-500 mt-1">
-                                            Selecione o fuso horário da sua clínica
+                                            Selecione o fuso horário da sua empresa
                                         </p>
                                     </div>
 

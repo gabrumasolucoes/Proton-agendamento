@@ -17,7 +17,6 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
-  DollarSign,
   UserX
 } from 'lucide-react';
 import { Appointment, DoctorProfile, ReminderStats, NoShowAnalytics, User } from '../types';
@@ -230,7 +229,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
              <BarChart className="w-6 h-6 text-blue-600" />
              Relatórios de Performance
            </h2>
-           <p className="text-sm text-gray-500">Analise o desempenho da clínica e tendências.</p>
+           <p className="text-sm text-gray-500">Analise o desempenho e tendências.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -242,7 +241,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                onChange={(e) => setSelectedDoctorId(e.target.value as string | 'all')}
                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
              >
-               <option value="all">Clínica Inteira</option>
+               <option value="all">Empresa</option>
                {doctors.filter(d => d.active).map(doctor => (
                  <option key={doctor.id} value={doctor.id}>
                    {doctor.name}
@@ -638,7 +637,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
           ) : noShowAnalytics && noShowAnalytics.totalCancelled > 0 ? (
             <>
               {/* Cards de Métricas Principais */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -665,21 +664,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                   <p className="text-xs text-gray-500">
                     Via lembrete: {noShowAnalytics.cancelledViaReminder}
                   </p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Impacto Financeiro</p>
-                      <h3 className="text-3xl font-bold text-gray-800">
-                        R$ {noShowAnalytics.estimatedFinancialImpact.toLocaleString('pt-BR')}
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-red-50 rounded-lg text-red-600">
-                      <DollarSign className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">Estimativa de perda (R$ 150/consulta)</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -838,7 +822,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
               <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
               <p className="text-gray-700 font-medium">Excelente! Nenhuma falta ou cancelamento neste período 🎉</p>
               <p className="text-sm text-gray-400 mt-2">
-                Sua clínica está mantendo uma taxa de comparecimento perfeita
+                Seu estabelecimento está mantendo uma taxa de comparecimento perfeita
               </p>
             </div>
           )}

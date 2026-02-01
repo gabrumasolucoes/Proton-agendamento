@@ -112,10 +112,6 @@ export async function getNoShowAnalytics(
       .sort((a, b) => b.occurrences - a.occurrences)
       .slice(0, 10); // Top 10
 
-    // Calcular impacto financeiro estimado (exemplo: R$ 150 por consulta)
-    const avgAppointmentValue = 150; // Pode ser configurável
-    const estimatedLoss = (noShows.length + otherCancellations.length) * avgAppointmentValue;
-
     return {
       totalNoShows: noShows.length,
       totalCancellations: otherCancellations.length,
@@ -126,8 +122,7 @@ export async function getNoShowAnalytics(
       cancelledViaReminder: otherCancellations.filter(a => a.cancelled_via_reminder).length,
       byDayOfWeek,
       byTimeSlot,
-      frequentOffenders,
-      estimatedFinancialImpact: estimatedLoss
+      frequentOffenders
     };
   } catch (error: any) {
     console.error('❌ [NoShowAnalytics] Erro:', error);
