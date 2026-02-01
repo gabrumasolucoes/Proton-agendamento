@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, Calendar } from 'lucide-react';
 import { Appointment } from '../types';
-import { apiAppointments } from '../services/api';
+import { apiData } from '../services/api';
 
 interface CancelAppointmentModalProps {
   appointment: Appointment;
@@ -32,7 +32,7 @@ export const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
     setError(null);
 
     try {
-      const { error: updateError } = await apiAppointments.cancelWithReason(
+      const { error: updateError } = await apiData.cancelWithReason(
         appointment.id,
         cancellationReason.trim(),
         'operator',
