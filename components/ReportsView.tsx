@@ -66,6 +66,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
   const [noShowAnalytics, setNoShowAnalytics] = useState<NoShowAnalytics | null>(null);
   const [loadingNoShow, setLoadingNoShow] = useState(false);
 
+  // 1. Calculate Date Range (MOVIDO PARA ANTES DOS useEffect!)
+  const dateRange = useMemo(() => {
+    switch (timeRange) {
+      case 'week':
+        return { start: startOfWeek(currentDate, { weekStartsOn: 0 }), end: endOfWeek(currentDate, { weekStartsOn: 0 }) };
+      case 'month':
+        return { start: startOfMonth(currentDate), end: endOfMonth(currentDate) };
+      case 'year':
+        return { start: startOfYear(currentDate), end: endOfYear(currentDate) };
+    }
+  }, [timeRange, currentDate]);
+
   // Carregar reminder stats quando período mudar
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -103,18 +115,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
 
     loadNoShowAnalytics();
   }, [currentUser?.id, dateRange]);
-
-  // 1. Calculate Date Range
-  const dateRange = useMemo(() => {
-    switch (timeRange) {
-      case 'week':
-        return { start: startOfWeek(currentDate, { weekStartsOn: 0 }), end: endOfWeek(currentDate, { weekStartsOn: 0 }) };
-      case 'month':
-        return { start: startOfMonth(currentDate), end: endOfMonth(currentDate) };
-      case 'year':
-        return { start: startOfYear(currentDate), end: endOfYear(currentDate) };
-    }
-  }, [timeRange, currentDate]);
 
   // 2. Filter Appointments by Doctor
   const doctorFilteredAppointments = useMemo(() => {
