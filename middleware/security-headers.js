@@ -28,7 +28,7 @@ function securityHeaders(req, res, next) {
         "style-src 'self' 'unsafe-inline' https:",
         "img-src 'self' data: https: blob:",
         "font-src 'self' data: https:",
-        "connect-src 'self' https:",
+        "connect-src 'self' https: wss: ws:",  // Adiciona wss: e ws: para WebSockets
         "frame-ancestors 'none'", // Impede embedding em iframes
         "base-uri 'self'",
         "form-action 'self'"
