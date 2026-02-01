@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { Appointment, DoctorProfile, Patient, User } from '../types';
+import { Appointment, DoctorProfile, Patient, User, ReminderSettings } from '../types';
 import { MOCK_APPOINTMENTS, MOCK_PATIENTS } from '../constants';
 import { protonCache } from '../lib/proton-cache';
 
@@ -51,7 +51,7 @@ export const apiAuth = {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return null;
 
-    // Buscar dados extras do perfil
+    // Buscar dados extras do perfil incluindo reminder settings
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
@@ -62,7 +62,14 @@ export const apiAuth = {
       id: session.user.id,
       email: session.user.email!,
       name: profile?.name || session.user.user_metadata?.name || 'Usuário',
-      clinicName: profile?.clinic_name || session.user.user_metadata?.clinic_name || 'Minha Clínica'
+      clinicName: profile?.clinic_name || session.user.user_metadata?.clinic_name || 'Minha Clínica',
+      // Reminder settings (F2)
+      reminderEnabled: profile?.reminder_enabled ?? true,
+      reminderDaysBefore: profile?.reminder_days_before ?? 1,
+      reminderSendTime: profile?.reminder_send_time ?? '08:00',
+      reminderTimezone: profile?.reminder_timezone ?? 'America/Sao_Paulo',
+      maxRemindersPerDay: profile?.max_reminders_per_day ?? 50,
+      noShowToleranceMinutes: profile?.no_show_tolerance_minutes ?? 30
     } as User;
   },
 
@@ -604,3 +611,102 @@ async function checkTimeConflict(
     return false; // Fail-open
   }
 }
+
+// --- Reminder Settings API (F2 - Fase 2) ---
+
+export const apiReminderSettings = {
+  /**
+   * Busca configurações de lembretes do perfil do usuário
+   * Retorna defaults se campos não existirem (backward compatible)
+   */
+  async getReminderSettings(userId: string): Promise<ReminderSettings> {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('reminder_enabled, reminder_days_before, reminder_send_time, reminder_timezone, max_reminders_per_day, no_show_tolerance_minutes')
+        .eq('id', userId)
+        .single();
+
+      if (error || !profile) {
+        console.warn('⚠️ [Reminder Settings] Erro ao buscar configurações, usando defaults:', error);
+        return {
+          enabled: true,
+          daysBefore: 1,
+          sendTime: '08:00',
+          timezone: 'America/Sao_Paulo',
+          maxPerDay: 50,
+          noShowToleranceMinutes: 30
+        };
+      }
+
+      return {
+        enabled: profile.reminder_enabled ?? true,
+        daysBefore: profile.reminder_days_before ?? 1,
+        sendTime: profile.reminder_send_time ?? '08:00',
+        timezone: profile.reminder_timezone ?? 'America/Sao_Paulo',
+        maxPerDay: profile.max_reminders_per_day ?? 50,
+        noShowToleranceMinutes: profile.no_show_tolerance_minutes ?? 30
+      };
+    } catch (error) {
+      console.error('❌ [Reminder Settings] Exceção ao buscar configurações:', error);
+      return {
+        enabled: true,
+        daysBefore: 1,
+        sendTime: '08:00',
+        timezone: 'America/Sao_Paulo',
+        maxPerDay: 50,
+        noShowToleranceMinutes: 30
+      };
+    }
+  },
+
+  /**
+   * Atualiza configurações de lembretes do perfil
+   * Valida os dados antes de salvar
+   */
+  async updateReminderSettings(userId: string, settings: Partial<ReminderSettings>): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Validações
+      if (settings.daysBefore !== undefined && (settings.daysBefore < 1 || settings.daysBefore > 7)) {
+        return { success: false, error: 'Dias de antecedência deve estar entre 1 e 7' };
+      }
+
+      if (settings.sendTime !== undefined && !/^\d{2}:\d{2}$/.test(settings.sendTime)) {
+        return { success: false, error: 'Horário deve estar no formato HH:mm (ex: 08:00)' };
+      }
+
+      if (settings.maxPerDay !== undefined && settings.maxPerDay < 1) {
+        return { success: false, error: 'Máximo de lembretes por dia deve ser pelo menos 1' };
+      }
+
+      if (settings.noShowToleranceMinutes !== undefined && settings.noShowToleranceMinutes < 0) {
+        return { success: false, error: 'Tolerância de no-show não pode ser negativa' };
+      }
+
+      // Preparar update (converter camelCase para snake_case)
+      const updateData: any = {};
+      if (settings.enabled !== undefined) updateData.reminder_enabled = settings.enabled;
+      if (settings.daysBefore !== undefined) updateData.reminder_days_before = settings.daysBefore;
+      if (settings.sendTime !== undefined) updateData.reminder_send_time = settings.sendTime;
+      if (settings.timezone !== undefined) updateData.reminder_timezone = settings.timezone;
+      if (settings.maxPerDay !== undefined) updateData.max_reminders_per_day = settings.maxPerDay;
+      if (settings.noShowToleranceMinutes !== undefined) updateData.no_show_tolerance_minutes = settings.noShowToleranceMinutes;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) {
+        console.error('❌ [Reminder Settings] Erro ao atualizar:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('✅ [Reminder Settings] Configurações atualizadas com sucesso');
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ [Reminder Settings] Exceção ao atualizar:', error);
+      return { success: false, error: error.message || 'Erro ao atualizar configurações' };
+    }
+  }
+};

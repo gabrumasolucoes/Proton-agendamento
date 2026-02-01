@@ -7,6 +7,14 @@ export interface User {
   role?: 'admin' | 'user';
   isAdmin?: boolean;
   allUsers?: any[]; // Para admin master
+  
+  // Configurações de lembretes (F2 - Fase 2)
+  reminderEnabled?: boolean;
+  reminderDaysBefore?: number;
+  reminderSendTime?: string;
+  reminderTimezone?: string;
+  maxRemindersPerDay?: number;
+  noShowToleranceMinutes?: number;
 }
 
 export interface Patient {
@@ -51,6 +59,14 @@ export interface Appointment {
   confirmedAt?: string | null;
   /** Data/hora em que o cliente cancelou pelo link (ISO). Null se não cancelado pelo cliente. */
   cancelledAt?: string | null;
+  
+  // Campos de cancelamento e reagendamento (F5 - Fase 5)
+  cancellationReason?: string | null;
+  cancelledBy?: 'patient' | 'operator' | 'system' | null;
+  cancelledViaReminder?: boolean;
+  noShowAt?: string | null;
+  rescheduledToAppointmentId?: string | null;
+  rescheduledNotes?: string | null;
 }
 
 export interface AiAnalysisResult {
@@ -66,4 +82,44 @@ export interface AppNotification {
   time: string;
   read: boolean;
   type: 'info' | 'success' | 'warning' | 'alert';
+}
+
+// Configurações de lembretes (F2)
+export interface ReminderSettings {
+  enabled: boolean;
+  daysBefore: number;
+  sendTime: string;
+  timezone: string;
+  maxPerDay: number;
+  noShowToleranceMinutes: number;
+}
+
+// Estatísticas de lembretes (F7)
+export interface ReminderStats {
+  totalSent: number;
+  confirmedViaReminder: number;
+  cancelledViaReminder: number;
+  responseRate: number;
+  confirmationRate: number;
+  cancellationRate: number;
+  noResponseRate: number;
+  avgResponseTimeMinutes: number;
+  byWeekday?: Record<string, { sent: number; confirmed: number; cancelled: number }>;
+  byHour?: Record<string, { sent: number; responseRate: number }>;
+}
+
+// Analytics de no-show (F10)
+export interface NoShowAnalytics {
+  totalNoShows: number;
+  totalCancellations: number;
+  noShowRate: number;
+  patterns?: {
+    highRiskTimeSlots: Array<{ hour: number; noShowRate: number }>;
+    highRiskWeekdays: Array<{ weekday: string; noShowRate: number }>;
+    repeatOffenders: Array<{ patientName: string; noShowCount: number; lastNoShow: string }>;
+  };
+  estimatedLoss?: {
+    totalHoursLost: number;
+    estimatedRevenueLoss?: number;
+  };
 }
