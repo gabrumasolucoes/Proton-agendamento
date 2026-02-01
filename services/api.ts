@@ -229,6 +229,43 @@ export const apiData = {
     await supabase.from('appointments').update({ status }).eq('id', id);
   },
 
+  // F6 - Cancelar agendamento com motivo
+  async cancelWithReason(
+    id: string,
+    reason: string,
+    cancelledBy: 'patient' | 'operator' | 'system',
+    wasRescheduled: boolean = false,
+    rescheduledNotes?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const updateData: any = {
+        status: 'cancelled',
+        cancellation_reason: reason,
+        cancelled_by: cancelledBy,
+        cancelled_at: new Date().toISOString()
+      };
+
+      if (wasRescheduled) {
+        updateData.rescheduled_notes = rescheduledNotes || 'Reagendado';
+      }
+
+      const { error } = await supabase
+        .from('appointments')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ [cancelWithReason] Erro:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('❌ [cancelWithReason] Erro:', err);
+      return { success: false, error: err.message || 'Erro ao cancelar' };
+    }
+  },
+
   // -- Patients --
   async getPatients(userId: string, isDemo: boolean): Promise<Patient[]> {
     if (isDemo) return MOCK_PATIENTS;
