@@ -30,6 +30,11 @@ const securityStatsHandler = require('./api/security-stats');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ===== ARQUIVOS ESTÁTICOS (ANTES DOS MIDDLEWARES DE SEGURANÇA) =====
+// Servir arquivos estáticos ANTES de aplicar middlewares pesados
+// Isso evita rate limiting e outros checks desnecessários para assets
+app.use(express.static(path.join(__dirname, 'dist')));
+
 // Middleware de segurança: headers HTTP
 const { securityHeaders } = require('./middleware/security-headers');
 app.use(securityHeaders);
@@ -142,10 +147,7 @@ app.post('/api/confirm-appointment',
     confirmAppointmentHandler
 );
 
-// ===== ARQUIVOS ESTÁTICOS =====
-
-// Servir arquivos estáticos da pasta dist
-app.use(express.static(path.join(__dirname, 'dist')));
+// ===== ROTAS ESPECIAIS =====
 
 // Rota especial para página de confirmação (cp2/[token])
 app.get('/cp2/:token', (req, res) => {
