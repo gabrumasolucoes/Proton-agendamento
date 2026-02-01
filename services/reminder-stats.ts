@@ -3,7 +3,7 @@
  * Calcula estatísticas detalhadas sobre lembretes enviados
  */
 
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabase';
 import { ReminderStats } from '../types';
 
 /**

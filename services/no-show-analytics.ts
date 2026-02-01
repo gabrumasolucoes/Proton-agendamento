@@ -3,7 +3,7 @@
  * Análise avançada de faltas e cancelamentos
  */
 
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabase';
 import { NoShowAnalytics } from '../types';
 
 /**
