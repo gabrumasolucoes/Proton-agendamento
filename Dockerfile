@@ -15,6 +15,7 @@ COPY --from=builder /app/dist ./dist
 COPY server.js ./
 COPY api ./api
 COPY lib ./lib
+COPY middleware ./middleware
 
 EXPOSE 3000
 CMD ["node", "server.js"]
