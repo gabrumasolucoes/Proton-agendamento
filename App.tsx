@@ -591,6 +591,7 @@ const App: React.FC = () => {
                   <ReportsView 
                     appointments={filteredAppointments}
                     doctors={doctors}
+                    currentUser={currentUser}
                   />
               );
           default:

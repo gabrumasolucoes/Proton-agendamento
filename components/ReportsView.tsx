@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   BarChart, 
   PieChart, 
@@ -10,9 +10,14 @@ import {
   ArrowUpRight, 
   ArrowDownRight,
   Filter,
-  Briefcase
+  Briefcase,
+  Bell,
+  MessageCircle,
+  CheckCircle,
+  XCircle,
+  Clock
 } from 'lucide-react';
-import { Appointment, DoctorProfile } from '../types';
+import { Appointment, DoctorProfile, ReminderStats, User } from '../types';
 import { 
   format, 
   startOfWeek, 
@@ -34,18 +39,43 @@ import {
   isWithinInterval
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getReminderStats } from '../services/reminder-stats';
 
 interface ReportsViewProps {
   appointments: Appointment[];
   doctors: DoctorProfile[];
+  currentUser?: User | null;
 }
 
 type TimeRange = 'week' | 'month' | 'year';
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors, currentUser }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | 'all'>('all');
+  
+  // F7 - Reminder stats
+  const [reminderStats, setReminderStats] = useState<ReminderStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  // Carregar reminder stats quando período mudar
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const loadReminderStats = async () => {
+      setLoadingStats(true);
+      try {
+        const stats = await getReminderStats(currentUser.id, dateRange.start, dateRange.end);
+        setReminderStats(stats);
+      } catch (error) {
+        console.error('Erro ao carregar reminder stats:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    loadReminderStats();
+  }, [currentUser?.id, dateRange]);
 
   // 1. Calculate Date Range
   const dateRange = useMemo(() => {
@@ -406,6 +436,163 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors 
                 </div>
             </div>
         </div>
+
+        {/* F7 - Seção de Estatísticas de Lembretes */}
+        {currentUser?.reminderEnabled && (
+          <div className="mt-8 space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Bell className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Estatísticas de Lembretes</h2>
+            </div>
+
+            {loadingStats ? (
+              <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
+                <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-500">Carregando estatísticas...</p>
+              </div>
+            ) : reminderStats && reminderStats.totalSent > 0 ? (
+              <>
+                {/* Cards de Métricas Principais */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Lembretes Enviados</p>
+                        <h3 className="text-3xl font-bold text-gray-800">{reminderStats.totalSent}</h3>
+                      </div>
+                      <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+                        <MessageCircle className="w-6 h-6" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">Total de lembretes no período</p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Taxa de Resposta</p>
+                        <h3 className="text-3xl font-bold text-gray-800">{reminderStats.responseRate}%</h3>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                        <TrendingUp className="w-6 h-6" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">{reminderStats.totalResponded} pacientes responderam</p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Taxa de Confirmação</p>
+                        <h3 className="text-3xl font-bold text-emerald-600">{reminderStats.confirmationRate}%</h3>
+                      </div>
+                      <div className="p-3 bg-emerald-50 rounded-lg text-emerald-600">
+                        <CheckCircle className="w-6 h-6" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">{reminderStats.totalConfirmed} confirmações</p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Tempo Médio de Resposta</p>
+                        <h3 className="text-3xl font-bold text-gray-800">{reminderStats.averageResponseTimeMinutes}min</h3>
+                      </div>
+                      <div className="p-3 bg-amber-50 rounded-lg text-amber-600">
+                        <Clock className="w-6 h-6" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">Entre envio e resposta</p>
+                  </div>
+                </div>
+
+                {/* Gráficos de Distribuição */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Por Dia da Semana */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-800 mb-6">Efetividade por Dia da Semana</h3>
+                    <div className="space-y-3">
+                      {Object.entries(reminderStats.byDayOfWeek).map(([day, stats]) => {
+                        const confirmRate = stats.sent > 0 ? (stats.confirmed / stats.sent) * 100 : 0;
+                        return (
+                          <div key={day} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-gray-700">{day}</span>
+                              <span className="text-gray-500">{stats.sent} enviados</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div 
+                                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${confirmRate}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-semibold text-emerald-600 w-12 text-right">
+                                {confirmRate.toFixed(0)}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Detalhamento de Respostas */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-800 mb-6">Detalhamento de Respostas</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          <span className="font-medium text-emerald-900">Confirmaram</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-emerald-600">{reminderStats.totalConfirmed}</p>
+                          <p className="text-xs text-emerald-700">{reminderStats.confirmationRate}%</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-rose-50 rounded-lg border border-rose-100">
+                        <div className="flex items-center gap-3">
+                          <XCircle className="w-5 h-5 text-rose-600" />
+                          <span className="font-medium text-rose-900">Cancelaram</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-rose-600">{reminderStats.totalCancelled}</p>
+                          <p className="text-xs text-rose-700">{reminderStats.cancellationRate}%</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <MessageCircle className="w-5 h-5 text-gray-600" />
+                          <span className="font-medium text-gray-900">Sem Resposta</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-gray-600">{reminderStats.totalNoResponse}</p>
+                          <p className="text-xs text-gray-500">
+                            {((reminderStats.totalNoResponse / reminderStats.totalSent) * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
+                <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">Nenhum lembrete enviado neste período</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  As estatísticas aparecerão quando lembretes forem enviados
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
