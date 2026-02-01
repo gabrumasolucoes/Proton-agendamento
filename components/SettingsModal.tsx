@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff } from 'lucide-react';
+import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff, Bell, BellOff } from 'lucide-react';
 import { DoctorProfile, User } from '../types';
-import { apiAuth, apiAgendaBlocks, AgendaBlock } from '../services/api';
+import { apiAuth, apiAgendaBlocks, AgendaBlock, apiReminderSettings } from '../services/api';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -33,7 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentUser,
   onUserUpdate
 }) => {
-  const [activeTab, setActiveTab] = useState<'doctors' | 'account' | 'agenda'>('doctors');
+  const [activeTab, setActiveTab] = useState<'doctors' | 'account' | 'agenda' | 'reminders'>('doctors');
   const [newDocName, setNewDocName] = useState('');
   const [newDocRole, setNewDocRole] = useState('');
   const [newDocColor, setNewDocColor] = useState(PRESET_COLORS[0].value);
@@ -61,10 +61,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [weekdayNum, setWeekdayNum] = useState<number>(6);
   const [weekdayLabel, setWeekdayLabel] = useState('');
 
+  // Reminder settings state (F3 - Fase 3)
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [reminderDaysBefore, setReminderDaysBefore] = useState(1);
+  const [reminderSendTime, setReminderSendTime] = useState('08:00');
+  const [reminderTimezone, setReminderTimezone] = useState('America/Sao_Paulo');
+  const [maxRemindersPerDay, setMaxRemindersPerDay] = useState(50);
+  const [noShowToleranceMinutes, setNoShowToleranceMinutes] = useState(30);
+  const [isSavingReminders, setIsSavingReminders] = useState(false);
+  const [reminderSaveMessage, setReminderSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   useEffect(() => {
     if (currentUser) {
       setUserName(currentUser.name || '');
       setUserClinic(currentUser.clinicName || '');
+      // Sincronizar reminder settings (F3)
+      setReminderEnabled(currentUser.reminderEnabled ?? true);
+      setReminderDaysBefore(currentUser.reminderDaysBefore ?? 1);
+      setReminderSendTime(currentUser.reminderSendTime ?? '08:00');
+      setReminderTimezone(currentUser.reminderTimezone ?? 'America/Sao_Paulo');
+      setMaxRemindersPerDay(currentUser.maxRemindersPerDay ?? 50);
+      setNoShowToleranceMinutes(currentUser.noShowToleranceMinutes ?? 30);
     }
   }, [currentUser]);
 
@@ -257,6 +274,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  // F3 - Handler para salvar configurações de lembretes
+  const handleSaveReminderSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    setIsSavingReminders(true);
+    setReminderSaveMessage(null);
+
+    try {
+      const { success, error } = await apiReminderSettings.updateReminderSettings(
+        currentUser.id,
+        {
+          enabled: reminderEnabled,
+          daysBefore: reminderDaysBefore,
+          sendTime: reminderSendTime,
+          timezone: reminderTimezone,
+          maxPerDay: maxRemindersPerDay,
+          noShowToleranceMinutes: noShowToleranceMinutes
+        }
+      );
+
+      if (!success) {
+        setReminderSaveMessage({ type: 'error', text: error || 'Erro ao salvar configurações.' });
+      } else {
+        setReminderSaveMessage({ type: 'success', text: 'Configurações de lembretes salvas com sucesso!' });
+        
+        // Atualizar usuário no contexto
+        if (onUserUpdate) {
+          onUserUpdate({
+            ...currentUser,
+            reminderEnabled,
+            reminderDaysBefore,
+            reminderSendTime,
+            reminderTimezone,
+            maxRemindersPerDay,
+            noShowToleranceMinutes
+          });
+        }
+        
+        // Limpar mensagem após 3 segundos
+        setTimeout(() => setReminderSaveMessage(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving reminder settings:', error);
+      setReminderSaveMessage({ type: 'error', text: 'Erro ao salvar configurações.' });
+    } finally {
+      setIsSavingReminders(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
@@ -291,6 +358,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'agenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
                     Agenda
+                </button>
+                <button 
+                    onClick={() => setActiveTab('reminders')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'reminders' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                    Lembretes
                 </button>
             </div>
 
@@ -632,6 +705,196 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
                             </>
                         )}
+                    </div>
+                )}
+
+                {/* F3 - Aba Lembretes */}
+                {activeTab === 'reminders' && (
+                    <div className="space-y-6 max-w-md">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                <Bell className="w-5 h-5 text-indigo-600" />
+                                Configurações de Lembretes
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-6">
+                                Configure o envio automático de lembretes de confirmação via WhatsApp.
+                            </p>
+
+                            <form onSubmit={handleSaveReminderSettings} className="space-y-6">
+                                {/* Toggle principal */}
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex-1">
+                                            <label className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                                                {reminderEnabled ? (
+                                                    <Bell className="w-4 h-4 text-green-600" />
+                                                ) : (
+                                                    <BellOff className="w-4 h-4 text-slate-400" />
+                                                )}
+                                                Enviar lembretes de confirmação
+                                            </label>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                {reminderEnabled 
+                                                    ? 'Lembretes estão ativos. Pacientes receberão mensagens via WhatsApp.'
+                                                    : 'Lembretes desativados. Nenhuma mensagem será enviada.'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setReminderEnabled(!reminderEnabled)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                                                reminderEnabled ? 'bg-green-600' : 'bg-slate-300'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    reminderEnabled ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Configurações (disabled se toggle off) */}
+                                <div className={`space-y-4 ${!reminderEnabled ? 'opacity-50' : ''}`}>
+                                    {/* Dias de antecedência */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Dias de antecedência
+                                        </label>
+                                        <select
+                                            value={reminderDaysBefore}
+                                            onChange={(e) => setReminderDaysBefore(Number(e.target.value))}
+                                            disabled={!reminderEnabled}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        >
+                                            <option value={1}>1 dia antes</option>
+                                            <option value={2}>2 dias antes</option>
+                                            <option value={3}>3 dias antes</option>
+                                            <option value={4}>4 dias antes</option>
+                                            <option value={5}>5 dias antes</option>
+                                            <option value={6}>6 dias antes</option>
+                                            <option value={7}>7 dias antes</option>
+                                        </select>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Quantos dias antes do agendamento o lembrete será enviado
+                                        </p>
+                                    </div>
+
+                                    {/* Horário do envio */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Horário do envio
+                                        </label>
+                                        <input
+                                            type="time"
+                                            value={reminderSendTime}
+                                            onChange={(e) => setReminderSendTime(e.target.value)}
+                                            disabled={!reminderEnabled}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Horário em que os lembretes serão enviados ({reminderTimezone})
+                                        </p>
+                                    </div>
+
+                                    {/* Timezone */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Fuso horário
+                                        </label>
+                                        <select
+                                            value={reminderTimezone}
+                                            onChange={(e) => setReminderTimezone(e.target.value)}
+                                            disabled={!reminderEnabled}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        >
+                                            <option value="America/Sao_Paulo">Brasília (UTC-3)</option>
+                                            <option value="America/Manaus">Manaus (UTC-4)</option>
+                                            <option value="America/Rio_Branco">Rio Branco (UTC-5)</option>
+                                            <option value="America/Fortaleza">Fortaleza (UTC-3)</option>
+                                            <option value="America/Recife">Recife (UTC-3)</option>
+                                            <option value="America/Bahia">Salvador (UTC-3)</option>
+                                        </select>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Selecione o fuso horário da sua clínica
+                                        </p>
+                                    </div>
+
+                                    {/* Configurações avançadas */}
+                                    <details className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <summary className="text-sm font-medium text-slate-700 cursor-pointer">
+                                            Configurações avançadas
+                                        </summary>
+                                        <div className="mt-4 space-y-4">
+                                            {/* Limite por dia */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Máximo de lembretes por dia
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="500"
+                                                    value={maxRemindersPerDay}
+                                                    onChange={(e) => setMaxRemindersPerDay(Number(e.target.value))}
+                                                    disabled={!reminderEnabled}
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                                />
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Limite de segurança (padrão: 50)
+                                                </p>
+                                            </div>
+
+                                            {/* Tolerância no-show */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Tolerância para falta (minutos)
+                                                </label>
+                                                <select
+                                                    value={noShowToleranceMinutes}
+                                                    onChange={(e) => setNoShowToleranceMinutes(Number(e.target.value))}
+                                                    disabled={!reminderEnabled}
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                                >
+                                                    <option value={15}>15 minutos</option>
+                                                    <option value={20}>20 minutos</option>
+                                                    <option value={30}>30 minutos</option>
+                                                    <option value={45}>45 minutos</option>
+                                                    <option value={60}>1 hora</option>
+                                                </select>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Tempo após o horário do agendamento para marcar como falta
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+
+                                {/* Botão Salvar */}
+                                <div className="pt-4 border-t border-slate-200">
+                                    <button
+                                        type="submit"
+                                        disabled={isSavingReminders}
+                                        className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        {isSavingReminders ? 'Salvando...' : 'Salvar Configurações'}
+                                    </button>
+                                    
+                                    {/* Mensagem de sucesso/erro */}
+                                    {reminderSaveMessage && (
+                                        <div className={`mt-3 p-3 rounded-lg text-sm ${
+                                            reminderSaveMessage.type === 'success' 
+                                                ? 'bg-green-50 text-green-800 border border-green-200' 
+                                                : 'bg-red-50 text-red-800 border border-red-200'
+                                        }`}>
+                                            {reminderSaveMessage.text}
+                                        </div>
+                                    )}
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
             </div>
