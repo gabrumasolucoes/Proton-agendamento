@@ -17,6 +17,8 @@ interface UsersManagementModalProps {
     onClose: () => void;
     currentUser: User;
     onStartMirrorMode?: (userId: string, userName: string, userEmail: string) => void;
+    /** Chamado quando o token admin expira (401) - para redirecionar ao login */
+    onSessionExpired?: () => void;
 }
 
 interface ProtonUser {
@@ -47,7 +49,7 @@ interface UserData {
     };
 }
 
-export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOpen, onClose, currentUser, onStartMirrorMode }) => {
+export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOpen, onClose, currentUser, onStartMirrorMode, onSessionExpired }) => {
     const [users, setUsers] = useState<ProtonUser[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -109,11 +111,21 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         }
     }, [isOpen, currentUser]);
 
+    const getAdminHeaders = (extra?: Record<string, string>): Record<string, string> => {
+        const h: Record<string, string> = { ...extra };
+        if (currentUser?.adminToken) h['X-Admin-Token'] = currentUser.adminToken;
+        return h;
+    };
+
     const fetchUsers = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/list-users');
+            const response = await fetch('/api/list-users', { headers: getAdminHeaders() });
+            if (response.status === 401) {
+                onSessionExpired?.();
+                return;
+            }
             const data = await response.json();
 
             if (data.success && data.users) {
@@ -133,7 +145,11 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         setLoadingUserData(true);
         setError(null);
         try {
-            const response = await fetch(`/api/get-user-data?userId=${userId}`);
+            const response = await fetch(`/api/get-user-data?userId=${userId}`, { headers: getAdminHeaders() });
+            if (response.status === 401) {
+                onSessionExpired?.();
+                return;
+            }
             const data = await response.json();
 
             if (data.success) {
@@ -237,13 +253,17 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         try {
             const response = await fetch('/api/reset-user-password', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     userId: resetPasswordDialog.user.id,
                     newPassword: resetPasswordDialog.newPassword
                 })
             });
 
+            if (response.status === 401) {
+                onSessionExpired?.();
+                return;
+            }
             const data = await response.json();
 
             if (response.ok && data.success) {
@@ -285,12 +305,16 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         try {
             const response = await fetch('/api/delete-user', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     userId: deleteDialog.user.id
                 })
             });
 
+            if (response.status === 401) {
+                onSessionExpired?.();
+                return;
+            }
             const data = await response.json();
 
             if (response.ok && data.success) {
@@ -364,7 +388,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
         try {
             const response = await fetch('/api/create-proton-user', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     email: createUserDialog.email.trim(),
                     name: createUserDialog.name.trim(),
@@ -373,6 +397,10 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                 })
             });
 
+            if (response.status === 401) {
+                onSessionExpired?.();
+                return;
+            }
             const data = await response.json();
 
             if (response.ok && data.success) {

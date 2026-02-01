@@ -112,7 +112,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Login admin master bem-sucedido
+                // Login admin master bem-sucedido - armazenar token para requisições admin
                 const adminUser: UserType = {
                     id: 'proton_admin_master',
                     name: data.user.name,
@@ -120,7 +120,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     clinicName: 'Admin Master Proton',
                     role: 'admin',
                     isAdmin: true,
-                    allUsers: data.allUsers || []
+                    allUsers: data.allUsers || [],
+                    adminToken: data.token
                 };
                 onLogin(adminUser, false); // false = não é demo
                 return;

@@ -150,7 +150,13 @@ const App: React.FC = () => {
               setAgendaBlocks([]); // mirror: RLS impede buscar blocos de outro usuário
               console.log('[loadData] Usando endpoint admin para mirror mode');
               try {
-                  const response = await fetch(`/api/get-user-data?userId=${targetUserId}`);
+                  const headers: Record<string, string> = {};
+                  if (user?.adminToken) headers['X-Admin-Token'] = user.adminToken;
+                  const response = await fetch(`/api/get-user-data?userId=${targetUserId}`, { headers });
+                  if (response.status === 401) {
+                      setUser(null);
+                      return;
+                  }
                   const data = await response.json();
                   
                   if (data.success) {
@@ -812,6 +818,7 @@ const App: React.FC = () => {
             onClose={() => setIsAdminPanelOpen(false)}
             currentUser={user}
             onStartMirrorMode={handleStartMirrorMode}
+            onSessionExpired={() => setUser(null)}
           />
       )}
       

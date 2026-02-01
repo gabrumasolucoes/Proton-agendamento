@@ -7,6 +7,8 @@ export interface User {
   role?: 'admin' | 'user';
   isAdmin?: boolean;
   allUsers?: any[]; // Para admin master
+  /** Token de sessão admin (apenas quando logado como admin master via /api/auth-admin) */
+  adminToken?: string;
   
   // Configurações de lembretes (F2 - Fase 2)
   reminderEnabled?: boolean;
