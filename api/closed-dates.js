@@ -10,7 +10,7 @@ const { getClosedDatesInRange } = require('../lib/agenda-blocks');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const API_SECRET_TOKEN = process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026';
+const API_SECRET_TOKEN = (process.env.PROTON_API_TOKEN || process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026').trim();
 
 const supabase = SUPABASE_URL && SUPABASE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
@@ -25,7 +25,8 @@ module.exports = async function handler(req, res) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Use GET' });
 
     const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ') || auth.split(' ')[1] !== API_SECRET_TOKEN) {
+    const token = (auth && auth.startsWith('Bearer ') ? (auth.split(' ')[1] || '').trim() : '');
+    if (!token || token !== API_SECRET_TOKEN) {
         return res.status(401).json({ error: 'Token inválido' });
     }
 

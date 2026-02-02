@@ -25,8 +25,8 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('❌ [check-availability] SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_ANON_KEY) devem estar configurados.');
 }
 
-// Token de autenticação para a API (segurança)
-const API_SECRET_TOKEN = process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026';
+// Token de autenticação para a API (segurança) - usar PROTON_API_TOKEN (mesmo nome do SDR)
+const API_SECRET_TOKEN = (process.env.PROTON_API_TOKEN || process.env.API_SECRET_TOKEN || 'proton-sdr-integration-secret-2026').trim();
 
 // Criar cliente Supabase apenas se as variáveis estiverem configuradas
 const supabase = SUPABASE_URL && SUPABASE_KEY
@@ -61,8 +61,8 @@ async function checkAvailabilityHandler(req, res) {
         return res.status(401).json({ error: 'Token de autenticação não fornecido.' });
     }
 
-    const token = authHeader.split(' ')[1];
-    if (token !== API_SECRET_TOKEN) {
+    const token = (authHeader.split(' ')[1] || '').trim();
+    if (!token || token !== API_SECRET_TOKEN) {
         return res.status(403).json({ error: 'Token de autenticação inválido.' });
     }
 
