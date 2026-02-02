@@ -158,11 +158,14 @@ async function updateAppointmentStatus(token, action) {
 }
 
 /**
- * Handler para GET (buscar dados do agendamento)
+ * Handler para GET - busca dados OU confirma/cancela via query (compatível com WebView WhatsApp)
+ * GET ?token=X&action=confirm|cancel → processa e redireciona para página de resultado
+ * GET ?token=X (sem action) → retorna JSON com dados do agendamento
  */
 async function handleGet(req, res) {
     try {
         const token = req.query.token;
+        const action = (req.query.action || '').toLowerCase();
 
         if (!token) {
             return res.status(400).json({
@@ -171,6 +174,19 @@ async function handleGet(req, res) {
             });
         }
 
+        // Se tem action, processar confirmação/cancelamento (fluxo por navegação - funciona no WhatsApp)
+        if (action === 'confirm' || action === 'cancel') {
+            const result = await updateAppointmentStatus(token, action);
+            const safeToken = String(token).replace(/[^a-zA-Z0-9]/g, '');
+            const redirectPath = '/cp2/' + safeToken;
+            if (result.success) {
+                const resultParam = action === 'confirm' ? 'success' : 'cancelled';
+                return res.redirect(302, redirectPath + '?result=' + resultParam);
+            }
+            return res.redirect(302, redirectPath + '?result=error&msg=' + encodeURIComponent(result.error || 'Erro'));
+        }
+
+        // Sem action: buscar dados do agendamento (JSON)
         const result = await getAppointmentByToken(token);
 
         if (!result.success) {

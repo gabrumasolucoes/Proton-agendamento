@@ -235,15 +235,27 @@
     </div>
 
     <script>
-        // Extrair token da URL
+        // Extrair token da URL (pode ter ?result=success no final)
         const pathParts = window.location.pathname.split('/');
-        const token = pathParts[pathParts.length - 1];
+        let token = pathParts[pathParts.length - 1];
+        if (token && token.includes('?')) token = token.split('?')[0];
 
-        if (!token || token === 'confirm.html' || token === '') {
+        // Verificar se voltou com resultado (fluxo por navegação - WebView WhatsApp)
+        const urlParams = new URLSearchParams(window.location.search);
+        const result = urlParams.get('result');
+        if (result === 'success') {
+            showMessage('✅ Agendamento confirmado com sucesso!', 'success');
+            disableButtons();
+        } else if (result === 'cancelled') {
+            showMessage('❌ Agendamento cancelado.', 'success');
+            disableButtons();
+        } else if (result === 'error') {
+            showMessage(urlParams.get('msg') || 'Erro ao processar. Tente novamente.', 'error');
+            enableButtons();
+        } else if (!token || token === 'confirm.html' || token === '') {
             showMessage('Token inválido na URL', 'error');
             disableButtons();
         } else {
-            // Carregar dados do agendamento
             loadAppointmentData(token);
         }
 
@@ -309,54 +321,14 @@
             await submitAction('cancel');
         }
 
-        async function submitAction(action) {
+        function submitAction(action) {
             disableButtons();
             showMessage(`Processando ${action === 'confirm' ? 'confirmação' : 'cancelamento'}...`, 'loading');
 
-            try {
-                const apiUrl = window.location.origin + '/api/confirm-appointment';
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        token: token,
-                        action: action
-                    })
-                });
-
-                const text = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (parseErr) {
-                    console.error('Resposta inválida (não é JSON):', text.substring(0, 200));
-                    throw new Error('Resposta inválida do servidor. Tente novamente ou abra o link em outro navegador (Chrome, Safari).');
-                }
-
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || 'Erro ao processar ação');
-                }
-
-                showMessage(
-                    action === 'confirm' 
-                        ? '✅ Agendamento confirmado com sucesso!' 
-                        : '❌ Agendamento cancelado.',
-                    'success'
-                );
-
-                // Desabilitar botões permanentemente após sucesso
-                disableButtons();
-            } catch (error) {
-                console.error('Erro ao processar ação:', error);
-                const msg = (error.message || '').toLowerCase();
-                const friendlyMsg = (msg.includes('pattern') || msg.includes('expected'))
-                    ? 'Erro ao processar. Tente abrir o link em outro navegador (Chrome ou Safari).'
-                    : (error.message || 'Erro ao processar ação');
-                showMessage(friendlyMsg, 'error');
-                enableButtons();
-            }
+            // Fluxo por navegação (GET + redirect) - funciona no WebView do WhatsApp
+            // Evita problemas com fetch/POST que retornam "resposta inválida"
+            const apiUrl = window.location.origin + '/api/confirm-appointment?token=' + encodeURIComponent(token) + '&action=' + action;
+            window.location.href = apiUrl;
         }
 
         function showMessage(text, type) {
