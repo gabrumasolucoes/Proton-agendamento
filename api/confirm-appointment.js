@@ -192,7 +192,8 @@ async function handleGet(req, res) {
  */
 async function handlePost(req, res) {
     try {
-        const { token, action } = req.body;
+        const body = req.body || {};
+        const { token, action } = body;
 
         if (!token) {
             return res.status(400).json({

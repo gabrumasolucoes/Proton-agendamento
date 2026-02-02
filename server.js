@@ -84,8 +84,14 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token', 'X-Requested-With']
 }));
 
-// Parse JSON body
-app.use(express.json());
+// Parse JSON body (strict: false aceita mais formatos; evita HTML em erros de parse)
+app.use(express.json({ strict: false }));
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError || (err.status === 400 && err.message?.includes('JSON'))) {
+        return res.status(400).json({ success: false, error: 'Corpo da requisição inválido. Envie JSON válido.' });
+    }
+    next(err);
+});
 
 // Carregar middleware de rate limiting
 const { rateLimitMiddleware, rateLimitConfigs } = require('./middleware/rate-limit');
@@ -162,6 +168,16 @@ app.get('*', (req, res) => {
         return res.status(404).json({ error: 'Endpoint não encontrado' });
     }
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// Handler de erros global - garante que APIs sempre retornem JSON (nunca HTML)
+app.use((err, req, res, next) => {
+    if (res.headersSent) return next(err);
+    console.error('❌ [Server] Erro não tratado:', err.message);
+    if (req.path.startsWith('/api')) {
+        return res.status(500).json({ success: false, error: 'Erro interno do servidor. Tente novamente.' });
+    }
+    res.status(500).send('Erro interno. Tente novamente.');
 });
 
 // Iniciar servidor
