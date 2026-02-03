@@ -1,97 +1,79 @@
-
 # Proton - Sistema de Agendamento Inteligente
 
-Sistema de agendamento para clínicas desenvolvido com React, Vite, TailwindCSS, Supabase e Integração com IA (Gemini).
+Sistema de agendamento para clínicas, integrado ao **App SDR** (IA Vigil) para agendamentos via WhatsApp com IA.
+
+## 🎯 Visão Geral
+
+- **Stack:** React, Vite, TailwindCSS, Supabase, Google Gemini
+- **Integração SDR:** O App SDR usa o Proton para criar/confirmar agendamentos quando o lead agenda via WhatsApp
 
 ## 🚀 Requisitos
 
-- Node.js (v18 ou superior)
+- Node.js 18+
 - NPM ou Yarn
-- Conta no Supabase (para Banco de Dados e Auth)
-- Chave de API Google Gemini (Opcional, para recursos de IA)
+- Conta Supabase (banco e auth)
+- Chave API Google Gemini (opcional)
 
-## 📦 Instalação Local (Cursor / VS Code)
+## 📦 Instalação Local
 
-1. **Baixe os arquivos:** Copie a estrutura de arquivos gerada para uma pasta no seu computador.
-2. **Instale as dependências:**
-   ```bash
-   npm install
-   ```
-3. **Configure as Variáveis de Ambiente:**
-   Crie um arquivo `.env` na raiz do projeto (baseado no exemplo abaixo) ou configure direto no seu sistema de build:
-   ```env
-   # API Key do Google Gemini (para IA)
-   API_KEY=sua_chave_aqui
-   
-   # Opcionais (se for alterar a conexão do Supabase via env)
-   VITE_SUPABASE_URL=sua_url_supabase
-   VITE_SUPABASE_ANON_KEY=sua_chave_anonima
-   ```
-4. **Rodar em Desenvolvimento:**
-   ```bash
-   npm run dev
-   ```
+```bash
+npm install
+```
 
-## 🛠️ Build e Deploy em Servidor Próprio
+Crie `.env` na raiz do Proton:
 
-Para hospedar no seu servidor (ex: `proton.gabruma.com.br`), siga os passos:
+```env
+API_KEY=sua_chave_gemini
+VITE_SUPABASE_URL=sua_url_supabase
+VITE_SUPABASE_ANON_KEY=sua_chave_anonima
+```
 
-### 1. Gerar o Build
-Gere a pasta estática de produção. Se o site for rodar na raiz do domínio (ex: `proton.gabruma.com.br/`), rode:
+```bash
+npm run dev
+```
+
+## 🛠️ Build e Deploy
 
 ```bash
 npm run build
 ```
 
-*Nota: Se for rodar em uma subpasta (ex: `gabruma.com.br/proton`), use: `VITE_BASE_PATH=/proton/ npm run build`*
+O conteúdo de `dist/` deve ser servido estático (ex: via Caddy em `proton.gabruma.com.br`).
 
-### 2. Upload
-Faça o upload de todo o conteúdo da pasta `dist` gerada para a pasta pública do seu servidor (ex: `public_html` ou `/var/www/proton.gabruma.com.br`).
+**SPA:** redirecionar todas as rotas para `index.html` (ex: `try_files $uri $uri/ /index.html` no Nginx).
 
-### 3. Configuração do Servidor Web
+## 🔗 Integração com App SDR
 
-Como é uma SPA (Single Page Application), você precisa redirecionar todas as rotas para o `index.html`.
-
-#### Apache (.htaccess)
-Crie um arquivo `.htaccess` na raiz do site com este conteúdo:
-
-```apache
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-</IfModule>
-```
-
-#### Nginx (nginx.conf)
-Adicione a diretiva `try_files` no bloco `location /`:
-
-```nginx
-server {
-    listen 80;
-    server_name proton.gabruma.com.br;
-    root /var/www/proton.gabruma.com.br;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
+- O **App SDR** chama as APIs do Proton para criar consultas e verificar disponibilidade
+- O Proton usa `SUPABASE_SERVICE_ROLE_KEY` para operações server-side
+- Endpoints usados pelo SDR: `check-availability`, `create-appointment`, `confirm-appointment`
 
 ## 🗄️ Banco de Dados (Supabase)
 
-Ao rodar o projeto pela primeira vez, clique no ícone de **Engrenagem (Configurações)** na tela de Login para ver o script SQL necessário.
+Tabelas principais:
+- `profiles`, `doctors`, `patients`, `appointments`
+- `agenda_blocks` (bloqueios)
+- `scheduling_sessions` (sessões do orquestrador SDR)
+- `company_feature_flags` (features por empresa)
 
-Resumo das tabelas necessárias:
-- `profiles`
-- `doctors`
-- `patients`
-- `appointments`
+## 📁 Estrutura
 
-## 🤝 Suporte
+```
+Proton-agendamento/
+├── api/              # Endpoints Express
+├── components/       # Componentes React
+├── services/         # api.ts, geminiService.ts
+├── lib/              # proton-cache, supabase
+├── server.js         # Servidor Express
+└── migrations/       # SQL migrations
+```
 
-Para dúvidas sobre a integração com IA ou Auth, verifique os arquivos em `services/api.ts` e `services/geminiService.ts`.
+## 📚 Documentação Adicional
+
+- **HORARIO_TIMEZONE_SDR_PROTON.md** – Timezone SDR vs Proton
+- **migrations/README_MIGRATIONS_LEMBRETES.md** – Migrations de lembretes
+
+---
+
+**Repositório:** [gabrumasolucoes/Proton-agendamento](https://github.com/gabrumasolucoes/Proton-agendamento)  
+**Produção:** `https://proton.gabruma.com.br`
