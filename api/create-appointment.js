@@ -169,7 +169,7 @@ async function createAppointmentHandler(req, res) {
                 procedure: procedureType,
                 status: 'pending'
             },
-            confirmationMessage: `✅ Agendamento confirmado!\n\n📅 Data: ${dateStr}\n⏰ Horário: ${timeStr}\n👤 Profissional: ${doctor?.name || 'A definir'}\n📋 Assunto: ${procedureType}\n\nAguardamos você!`
+            confirmationMessage: `Pronto! Seu agendamento está confirmado.\n\n📅 ${dateStr} às ${timeStr}\n👤 ${doctor?.name || 'Atendente Principal'}\n📋 ${procedureType}\n\nTe aguardamos lá!`
         });
 
     } catch (error) {
