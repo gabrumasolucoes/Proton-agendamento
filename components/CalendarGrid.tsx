@@ -14,7 +14,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { Appointment, CalendarViewMode } from '../types';
 import { HOURS_OF_OPERATION } from '../constants';
-import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle, CalendarOff, Briefcase } from 'lucide-react';
+import { Sparkles, Clock, MoreHorizontal, MessageCircle, CheckCircle, CalendarOff } from 'lucide-react';
 import type { AgendaBlock } from '../services/api';
 import type { DoctorProfile } from '../types';
 
@@ -362,42 +362,36 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                     className={`absolute rounded-xl text-left overflow-hidden transition-all duration-300 ${isReadOnly ? 'cursor-default' : 'hover:shadow-lg hover:-translate-y-1 hover:z-30 cursor-pointer'} group ${cardClasses} ${opacityClass}`}
                                                 >
                                                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${borderAccent}`}></div>
-                                                    <div className="pl-3 pr-2 py-2 h-full flex flex-col">
-                                                        <div className="flex items-center justify-between mb-0.5 flex-shrink-0">
-                                                            <span className={`text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 text-slate-500/80`}>
-                                                                <Clock className="w-2.5 h-2.5" />
-                                                                {format(apt.start, 'HH:mm')}
+                                                    <div className="pl-3 pr-2 py-2 h-full flex flex-col min-w-0">
+                                                        {/* Linha 1: horário + nome do cliente + profissional (sempre visível, como na vista mensal) */}
+                                                        <div className="flex items-center justify-between gap-1 mb-0.5 flex-shrink-0 min-w-0">
+                                                            <span className={`text-[11px] font-semibold leading-tight truncate min-w-0 flex items-center gap-1 ${textClasses}`}>
+                                                                <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                                                                {format(apt.start, 'HH:mm')} {apt.patientName}
+                                                                {getDoctorName(apt.doctorId) && (
+                                                                    <span className="text-[10px] opacity-85 font-medium">• {getDoctorName(apt.doctorId)}</span>
+                                                                )}
                                                             </span>
-                                                            <span className="flex items-center gap-1">
+                                                            <span className="flex items-center gap-0.5 flex-shrink-0">
                                                                 {apt.source === 'chatbot' && (
                                                                     <div className="bg-white/50 rounded-full p-0.5 shadow-sm">
                                                                         <MessageCircle className="w-2.5 h-2.5 text-indigo-500" />
                                                                     </div>
                                                                 )}
                                                                 {apt.confirmedAt && (
-                                                                    <CheckCircle className="w-3 h-3 text-emerald-600 flex-shrink-0" title="Cliente confirmou pelo link" />
+                                                                    <CheckCircle className="w-3 h-3 text-emerald-600" title="Cliente confirmou pelo link" />
                                                                 )}
                                                             </span>
                                                         </div>
-                                                        
-                                                        <div className={`text-[13px] font-bold leading-tight mb-0.5 truncate flex-shrink-0 ${textClasses}`}>
+                                                        {/* Linha 2: tipo (consulta, etc.) */}
+                                                        <div className={`text-[11px] font-medium leading-tight truncate flex-shrink-0 text-slate-600/90 ${textClasses}`}>
                                                             {apt.title}
                                                         </div>
-                                                        
-                                                        <div className="text-[11px] text-slate-600/90 font-medium flex-shrink-0 flex flex-col gap-0.5">
-                                                            <span className="truncate">{apt.patientName}</span>
-                                                            {getDoctorName(apt.doctorId) && (
-                                                                <span className="truncate text-[10px] text-slate-500 flex items-center gap-1">
-                                                                    <Briefcase className="w-2.5 h-2.5" />
-                                                                    {getDoctorName(apt.doctorId)}
-                                                                </span>
-                                                            )}
-                                                        </div>
 
-                                                        {/* Tags */}
+                                                        {/* Tags - só quando o bloco tem altura suficiente */}
                                                         {/* @ts-ignore */}
-                                                        {parseInt(style.height) > 60 && apt.tags && apt.tags.length > 0 && (
-                                                            <div className="mt-auto pt-1 flex flex-wrap gap-1 overflow-hidden h-6 content-end">
+                                                        {parseInt(style?.height || 0) > 70 && apt.tags && apt.tags.length > 0 && (
+                                                            <div className="mt-auto pt-1 flex flex-wrap gap-1 overflow-hidden max-h-5 content-end">
                                                                 {apt.tags.slice(0, 3).map(tag => (
                                                                     <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-white/60 rounded-md text-slate-700 font-semibold border border-black/5 shadow-sm backdrop-blur-md">
                                                                         {tag}
