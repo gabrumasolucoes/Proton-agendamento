@@ -89,6 +89,13 @@ async function createAppointmentHandler(req, res) {
             });
         }
 
+        const normalizedPhone = normalizePhoneToE164(patientPhone);
+        if (!normalizedPhone) {
+            return res.status(400).json({
+                error: 'Telefone inválido. Use DDD + número (ex: 11999999999 ou 5511999999999).'
+            });
+        }
+
         // Converter data
         const startDate = new Date(dateTime);
         if (isNaN(startDate.getTime())) {
@@ -108,8 +115,8 @@ async function createAppointmentHandler(req, res) {
             });
         }
 
-        // 1. Buscar ou criar paciente (vinculado ao usuário do Proton)
-        let patient = await findOrCreatePatient(patientName, patientPhone, protonUserId);
+        // 1. Buscar ou criar paciente (vinculado ao usuário do Proton) — telefone sempre normalizado E.164
+        let patient = await findOrCreatePatient(patientName, normalizedPhone, protonUserId);
 
         // 2. Buscar médico (usar protonDoctorId se fornecido, senão buscar por nome ou primeiro disponível)
         let doctor = await findDoctor(doctorName, protonUserId, protonDoctorId);
@@ -125,10 +132,12 @@ async function createAppointmentHandler(req, res) {
         }
 
         // 4. Criar agendamento (vinculado ao user_id do Proton)
+        // patient_phone na linha do agendamento é usado pelo job de lembretes (SDR); sem ele o lembrete não é enviado
         const appointmentData = {
             user_id: protonUserId,       // IMPORTANTE: Vincula ao usuário correto do Proton
             patient_id: patient.id,
             patient_name: patientName,
+            patient_phone: normalizedPhone || patient?.phone || null, // E.164 — obrigatório para envio de lembrete via WhatsApp
             doctor_id: doctor?.id || null,
             title: procedureType,
             start_time: startDate.toISOString(),
@@ -180,8 +189,23 @@ async function createAppointmentHandler(req, res) {
 
 // Funções auxiliares
 
+/**
+ * Normaliza telefone para E.164 (Brasil: 5511999999999).
+ * Um único formato evita duplicar paciente quando o SDR envia "554388466446" vs "4388466446".
+ */
+function normalizePhoneToE164(phone) {
+    if (!phone || typeof phone !== 'string') return null;
+    let cleaned = String(phone).replace(/\D/g, '');
+    if (!cleaned.startsWith('55')) {
+        if (cleaned.length === 10 || cleaned.length === 11) cleaned = '55' + cleaned;
+        else return null;
+    }
+    if (cleaned.length < 12 || cleaned.length > 13) return null;
+    return cleaned;
+}
+
 async function findOrCreatePatient(name, phone, userId) {
-    // Buscar paciente existente pelo telefone E user_id
+    // Buscar paciente existente pelo telefone normalizado e user_id (um telefone = um paciente)
     const { data: existing } = await supabase
         .from('patients')
         .select('*')
@@ -190,19 +214,31 @@ async function findOrCreatePatient(name, phone, userId) {
         .single();
 
     if (existing) {
+        // Atualizar nome se o novo for "mais completo" (mais palavras ou mais longo)
+        const newWords = (name || '').trim().split(/\s+/).filter(Boolean).length;
+        const currentWords = (existing.name || '').trim().split(/\s+/).filter(Boolean).length;
+        const nameIsMoreComplete = (newWords > currentWords) || ((name || '').trim().length > (existing.name || '').trim().length && newWords >= 1);
+        if (nameIsMoreComplete && (name || '').trim()) {
+            const { data: updated } = await supabase
+                .from('patients')
+                .update({ name: (name || '').trim() })
+                .eq('id', existing.id)
+                .select()
+                .single();
+            if (updated) return updated;
+        }
         return existing;
     }
 
     // Criar novo paciente vinculado ao usuário
     const { data: newPatient, error } = await supabase
         .from('patients')
-        .insert([{ name, phone, user_id: userId }])
+        .insert([{ name: (name || '').trim(), phone, user_id: userId }])
         .select()
         .single();
 
     if (error) {
         console.error('Erro ao criar paciente:', error);
-        // Retornar objeto mínimo para não bloquear
         return { id: null, name, phone };
     }
 
