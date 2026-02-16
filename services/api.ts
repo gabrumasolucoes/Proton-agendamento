@@ -69,7 +69,9 @@ export const apiAuth = {
       reminderSendTime: profile?.reminder_send_time ?? '08:00',
       reminderTimezone: profile?.reminder_timezone ?? 'America/Sao_Paulo',
       maxRemindersPerDay: profile?.max_reminders_per_day ?? 50,
-      noShowToleranceMinutes: profile?.no_show_tolerance_minutes ?? 30
+      noShowToleranceMinutes: profile?.no_show_tolerance_minutes ?? 30,
+      reminderMessageTemplate: profile?.reminder_message_template ?? null,
+      reminderAddress: profile?.reminder_address ?? null
     } as User;
   },
 
@@ -660,7 +662,7 @@ export const apiReminderSettings = {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('reminder_enabled, reminder_days_before, reminder_send_time, reminder_timezone, max_reminders_per_day, no_show_tolerance_minutes')
+        .select('reminder_enabled, reminder_days_before, reminder_send_time, reminder_timezone, max_reminders_per_day, no_show_tolerance_minutes, reminder_message_template, reminder_address')
         .eq('id', userId)
         .single();
 
@@ -682,7 +684,9 @@ export const apiReminderSettings = {
         sendTime: profile.reminder_send_time ?? '08:00',
         timezone: profile.reminder_timezone ?? 'America/Sao_Paulo',
         maxPerDay: profile.max_reminders_per_day ?? 50,
-        noShowToleranceMinutes: profile.no_show_tolerance_minutes ?? 30
+        noShowToleranceMinutes: profile.no_show_tolerance_minutes ?? 30,
+        reminderMessageTemplate: profile.reminder_message_template ?? null,
+        reminderAddress: profile.reminder_address ?? null
       };
     } catch (error) {
       console.error('❌ [Reminder Settings] Exceção ao buscar configurações:', error);
@@ -728,6 +732,8 @@ export const apiReminderSettings = {
       if (settings.timezone !== undefined) updateData.reminder_timezone = settings.timezone;
       if (settings.maxPerDay !== undefined) updateData.max_reminders_per_day = settings.maxPerDay;
       if (settings.noShowToleranceMinutes !== undefined) updateData.no_show_tolerance_minutes = settings.noShowToleranceMinutes;
+      if (settings.reminderMessageTemplate !== undefined) updateData.reminder_message_template = settings.reminderMessageTemplate === '' ? null : settings.reminderMessageTemplate;
+      if (settings.reminderAddress !== undefined) updateData.reminder_address = settings.reminderAddress === '' ? null : settings.reminderAddress;
 
       const { error } = await supabase
         .from('profiles')

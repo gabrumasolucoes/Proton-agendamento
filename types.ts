@@ -17,6 +17,10 @@ export interface User {
   reminderTimezone?: string;
   maxRemindersPerDay?: number;
   noShowToleranceMinutes?: number;
+  /** Template da mensagem de lembrete. Placeholders: [data], [horário], [profissional], [link], [endereço]. Vazio = mensagem padrão. */
+  reminderMessageTemplate?: string | null;
+  /** Endereço exibido no lembrete (substitui [endereço]). */
+  reminderAddress?: string | null;
 }
 
 export interface Patient {
@@ -94,6 +98,10 @@ export interface ReminderSettings {
   timezone: string;
   maxPerDay: number;
   noShowToleranceMinutes: number;
+  /** Template da mensagem. Placeholders: [data], [horário], [profissional], [link], [endereço]. Vazio = padrão. */
+  reminderMessageTemplate?: string | null;
+  /** Endereço no lembrete (substitui [endereço]). */
+  reminderAddress?: string | null;
 }
 
 // Estatísticas de lembretes (F7)

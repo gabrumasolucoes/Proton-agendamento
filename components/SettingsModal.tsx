@@ -68,6 +68,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [reminderTimezone, setReminderTimezone] = useState('America/Sao_Paulo');
   const [maxRemindersPerDay, setMaxRemindersPerDay] = useState(50);
   const [noShowToleranceMinutes, setNoShowToleranceMinutes] = useState(30);
+  const [reminderMessageTemplate, setReminderMessageTemplate] = useState('');
+  const [reminderAddress, setReminderAddress] = useState('');
   const [isSavingReminders, setIsSavingReminders] = useState(false);
   const [reminderSaveMessage, setReminderSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -82,6 +84,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setReminderTimezone(currentUser.reminderTimezone ?? 'America/Sao_Paulo');
       setMaxRemindersPerDay(currentUser.maxRemindersPerDay ?? 50);
       setNoShowToleranceMinutes(currentUser.noShowToleranceMinutes ?? 30);
+      setReminderMessageTemplate(currentUser.reminderMessageTemplate ?? '');
+      setReminderAddress(currentUser.reminderAddress ?? '');
     }
   }, [currentUser]);
 
@@ -291,7 +295,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           sendTime: reminderSendTime,
           timezone: reminderTimezone,
           maxPerDay: maxRemindersPerDay,
-          noShowToleranceMinutes: noShowToleranceMinutes
+          noShowToleranceMinutes: noShowToleranceMinutes,
+          reminderMessageTemplate: reminderMessageTemplate.trim() || null,
+          reminderAddress: reminderAddress.trim() || null
         }
       );
 
@@ -309,7 +315,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             reminderSendTime,
             reminderTimezone,
             maxRemindersPerDay,
-            noShowToleranceMinutes
+            noShowToleranceMinutes,
+            reminderMessageTemplate: reminderMessageTemplate.trim() || undefined,
+            reminderAddress: reminderAddress.trim() || undefined
           });
         }
         
@@ -866,6 +874,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 <p className="text-xs text-slate-500 mt-1">
                                                     Tempo após o horário do agendamento para marcar como falta
                                                 </p>
+                                            </div>
+
+                                            {/* Mensagem personalizada (opcional) */}
+                                            <div className="pt-4 border-t border-slate-200">
+                                                <h4 className="text-sm font-semibold text-slate-800 mb-2">Mensagem personalizada (opcional)</h4>
+                                                <p className="text-xs text-slate-500 mb-2">
+                                                    Se vazio, é usada a mensagem padrão do sistema. Use os placeholders: [data], [horário], [profissional], [link], [endereço]. Recomendamos manter [link] e [data].
+                                                </p>
+                                                <textarea
+                                                    value={reminderMessageTemplate}
+                                                    onChange={(e) => setReminderMessageTemplate(e.target.value)}
+                                                    disabled={!reminderEnabled}
+                                                    rows={5}
+                                                    maxLength={2000}
+                                                    placeholder="Ex.: Olá! Sua consulta está agendada para [data] às [horário]. Confirme por aqui: [link]"
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed resize-y"
+                                                />
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Máximo 2000 caracteres
+                                                </p>
+                                                <div className="mt-3">
+                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Endereço no lembrete</label>
+                                                    <input
+                                                        type="text"
+                                                        value={reminderAddress}
+                                                        onChange={(e) => setReminderAddress(e.target.value)}
+                                                        disabled={!reminderEnabled}
+                                                        placeholder="Ex.: Rua Exemplo, 123"
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                                    />
+                                                    <p className="text-xs text-slate-500 mt-1">
+                                                        Substitui [endereço] na mensagem. Vazio = &quot;Endereço a confirmar&quot;
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </details>
