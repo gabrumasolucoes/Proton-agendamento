@@ -96,8 +96,12 @@ async function createAppointmentHandler(req, res) {
             });
         }
 
-        // Converter data
-        const startDate = new Date(dateTime);
+        // Converter data: se dateTime não tiver timezone (Z ou ±HH:MM), tratar como BRT para evitar
+        // horário errado quando o servidor roda em UTC (ex.: 14:00 virar 11:00 na mensagem).
+        const dtStr = String(dateTime).trim();
+        const hasOffset = /[Zz]$|[+-]\d{2}:?\d{2}$/.test(dtStr);
+        const normalizedDateTime = hasOffset ? dtStr : dtStr.replace(/\.\d{3}$/, '') + '-03:00';
+        const startDate = new Date(normalizedDateTime);
         if (isNaN(startDate.getTime())) {
             return res.status(400).json({ error: 'Data inválida. Use formato ISO: 2026-01-10T14:00:00' });
         }
