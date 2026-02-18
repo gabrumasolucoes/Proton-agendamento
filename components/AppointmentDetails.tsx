@@ -15,6 +15,9 @@ interface AppointmentDetailsProps {
   doctors?: DoctorProfile[]; // Lista de profissionais
 }
 
+/** Exibir seção "Inteligência Proton" (botão Gerar Análise). Trocar para true para reativar. */
+const SHOW_PROTON_AI_SECTION = false;
+
 export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, onClose, onUpdateStatus, onEdit, doctors = [] }) => {
   const [analysis, setAnalysis] = useState<AiAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -225,6 +228,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
           )}
 
           {/* AI Analysis Section */}
+          {SHOW_PROTON_AI_SECTION && (
           <div className="space-y-3">
              <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-indigo-900 flex items-center gap-2">
@@ -289,6 +293,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                  </div>
              )}
           </div>
+          )}
 
         </div>
 
