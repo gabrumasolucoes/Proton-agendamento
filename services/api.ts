@@ -231,6 +231,12 @@ export const apiData = {
     await supabase.from('appointments').update({ status }).eq('id', id);
   },
 
+  async updateAppointmentNotes(id: string, notes: string, isDemo: boolean) {
+    if (isDemo) return;
+    const { error } = await supabase.from('appointments').update({ notes }).eq('id', id);
+    if (error) throw error;
+  },
+
   // F6 - Cancelar agendamento com motivo
   async cancelWithReason(
     id: string,

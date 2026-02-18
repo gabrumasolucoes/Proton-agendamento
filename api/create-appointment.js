@@ -12,7 +12,7 @@
  *   "duration": 30,
  *   "procedureType": "Consulta - Avaliação",
  *   "doctorName": "Dr. João" (opcional),
- *   "notes": "Agendado via WhatsApp" (opcional),
+ *   "notes": "Agendado via WhatsApp - Vigil" (opcional),
  *   "protonUserId": "uuid-do-usuario-proton" (OBRIGATÓRIO - vincula ao login do Proton),
  *   "protonDoctorId": "uuid-do-medico" (opcional - médico específico)
  * }
@@ -70,7 +70,7 @@ async function createAppointmentHandler(req, res) {
             duration = 30,
             procedureType,
             doctorName,
-            notes = 'Agendado via WhatsApp',
+            notes = 'Agendado via WhatsApp - Vigil',
             protonUserId,      // ID do usuário/login no Proton (obrigatório)
             protonDoctorId     // ID do médico específico (opcional)
         } = req.body;
@@ -149,7 +149,7 @@ async function createAppointmentHandler(req, res) {
             status: 'pending',
             notes: notes,
             source: 'chatbot',
-            tags: ['whatsapp', 'sdr']
+            tags: ['whatsapp', 'vigil']
         };
 
         const { data: appointment, error } = await supabase

@@ -15,6 +15,7 @@ interface PatientsViewProps {
   onUpdatePatient: (patient: Patient) => void;
   onDeletePatient: (id: string) => void;
   onCreateAppointment: (patient: Patient) => void;
+  onUpdateAppointmentNotes?: (appointmentId: string, notes: string) => Promise<void>;
 }
 
 interface PatientSummary extends Omit<Patient, 'history'> {
@@ -23,6 +24,10 @@ interface PatientSummary extends Omit<Patient, 'history'> {
   nextAppointment?: Date;
   history: Appointment[];
 }
+
+/** Exibe "SDR" como "Vigil" para servir a diferentes empresas. */
+const displayNote = (notes: string) => (notes || '').replace(/\bSDR\b/g, 'Vigil');
+const displayTag = (tag: string) => (tag === 'sdr' ? 'Vigil' : tag);
 
 export const PatientsView: React.FC<PatientsViewProps> = ({ 
     patients, 
@@ -33,12 +38,15 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
     onAddPatient,
     onUpdatePatient,
     onDeletePatient,
-    onCreateAppointment
+    onCreateAppointment,
+    onUpdateAppointmentNotes
 }) => {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [editingNotesValue, setEditingNotesValue] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Form State
@@ -365,7 +373,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                     <div>
                         <h3 className="text-sm font-bold text-slate-800 flex items-center mb-6">
                             <History className="w-4 h-4 mr-2 text-indigo-500" />
-                            Histórico Clínico
+                            Histórico
                         </h3>
 
                         {selectedPatient.history.length === 0 ? (
@@ -427,9 +435,50 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                                                     </div>
                                                 </div>
 
-                                                {apt.notes && (
-                                                    <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-600 leading-relaxed border-l-2 border-slate-300">
-                                                        {apt.notes}
+                                                {(apt.notes || onUpdateAppointmentNotes) && (
+                                                    <div className="bg-slate-50 rounded-lg border-l-2 border-slate-300">
+                                                        {editingNotesId === apt.id ? (
+                                                            <div className="p-3 space-y-2">
+                                                                <textarea
+                                                                    className="w-full min-h-[80px] p-2 text-sm text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                    value={editingNotesValue}
+                                                                    onChange={(e) => setEditingNotesValue(e.target.value)}
+                                                                    placeholder="Anotações do atendimento..."
+                                                                />
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={async () => {
+                                                                            if (onUpdateAppointmentNotes) {
+                                                                                await onUpdateAppointmentNotes(apt.id, editingNotesValue);
+                                                                                setEditingNotesId(null);
+                                                                            }
+                                                                        }}
+                                                                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                                                                    >
+                                                                        Salvar
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setEditingNotesId(null); setEditingNotesValue(''); }}
+                                                                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                                                    >
+                                                                        Cancelar
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div
+                                                                className="p-3 text-sm text-slate-600 leading-relaxed cursor-text min-h-[44px]"
+                                                                onClick={() => onUpdateAppointmentNotes && (setEditingNotesId(apt.id), setEditingNotesValue(apt.notes || ''))}
+                                                                title={onUpdateAppointmentNotes ? 'Clique para editar anotações' : undefined}
+                                                            >
+                                                                {apt.notes ? displayNote(apt.notes) : <span className="text-slate-400">Clique para adicionar anotações</span>}
+                                                                {onUpdateAppointmentNotes && (
+                                                                    <span className="ml-2 text-xs text-indigo-500">Editar</span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -437,7 +486,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                                                     <div className="mt-4 flex flex-wrap gap-2">
                                                         {apt.tags.map(tag => (
                                                             <span key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px] font-medium text-slate-500">
-                                                                {tag}
+                                                                {displayTag(tag)}
                                                             </span>
                                                         ))}
                                                     </div>

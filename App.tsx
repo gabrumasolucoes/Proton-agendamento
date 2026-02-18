@@ -488,6 +488,19 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateAppointmentNotes = async (appointmentId: string, notes: string) => {
+    if (!user) return;
+    if (mirrorMode.isActive) return;
+    try {
+      await apiData.updateAppointmentNotes(appointmentId, notes, isDemoMode);
+      setAppointments(prev => prev.map(apt => apt.id === appointmentId ? { ...apt, notes } : apt));
+      addNotification('Anotações salvas', 'O histórico do atendimento foi atualizado.', 'success');
+    } catch (e) {
+      console.error('Erro ao salvar anotações:', e);
+      addNotification('Erro', 'Não foi possível salvar as anotações.', 'error');
+    }
+  };
+
   const handleUpdateAppointmentStatus = async (appointmentId: string, newStatus: Appointment['status']) => {
     if (!user) return;
 
@@ -590,6 +603,7 @@ const App: React.FC = () => {
                     onUpdatePatient={mirrorMode.isActive ? () => {} : handleUpdatePatient}
                     onDeletePatient={mirrorMode.isActive ? () => {} : handleDeletePatient}
                     onCreateAppointment={mirrorMode.isActive ? () => {} : handleCreateAppointmentForPatient}
+                    onUpdateAppointmentNotes={mirrorMode.isActive ? undefined : handleUpdateAppointmentNotes}
                 />
               );
           case 'reports':

@@ -154,7 +154,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                 Resumo do Atendimento (WhatsApp)
             </h3>
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-sm text-slate-600 leading-relaxed">
-                "{appointment.notes}"
+                {(appointment.notes || '').replace(/\bSDR\b/g, 'Vigil')}
             </div>
           </div>
 
