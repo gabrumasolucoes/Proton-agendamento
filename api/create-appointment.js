@@ -67,13 +67,17 @@ async function createAppointmentHandler(req, res) {
             patientName,
             patientPhone,
             dateTime,
-            duration = 30,
+            duration: rawDuration = 60,
             procedureType,
             doctorName,
             notes = 'Agendado via WhatsApp - Vigil',
             protonUserId,      // ID do usuário/login no Proton (obrigatório)
             protonDoctorId     // ID do médico específico (opcional)
         } = req.body;
+        const duration = parseInt(rawDuration, 10);
+        if (duration !== 30 && duration !== 60) {
+            return res.status(400).json({ error: 'Campo "duration" deve ser 30 ou 60.' });
+        }
 
         // Validações
         if (!patientName || !patientPhone || !dateTime || !procedureType) {

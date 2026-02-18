@@ -67,7 +67,11 @@ async function checkAvailabilityHandler(req, res) {
     }
 
     try {
-        const { date, protonUserId, doctorId, duration = 30 } = req.query;
+        const { date, protonUserId, doctorId, duration: rawDuration = 30 } = req.query;
+        const duration = parseInt(rawDuration, 10);
+        if (duration !== 30 && duration !== 60) {
+            return res.status(400).json({ error: 'Parâmetro "duration" deve ser 30 ou 60.' });
+        }
 
         // Validar protonUserId
         if (!protonUserId) {
@@ -113,7 +117,7 @@ async function checkAvailabilityHandler(req, res) {
         }
 
         // Gerar todos os slots do dia
-        const allSlots = generateDaySlots(targetDate, parseInt(duration));
+        const allSlots = generateDaySlots(targetDate, duration);
 
         // Buscar agendamentos existentes no dia
         const dayStart = new Date(targetDate);
@@ -150,7 +154,7 @@ async function checkAvailabilityHandler(req, res) {
         // Filtrar slots ocupados
         const availableSlots = allSlots.filter(slot => {
             const slotStart = new Date(slot.dateTime);
-            const slotEnd = new Date(slotStart.getTime() + parseInt(duration) * 60000);
+            const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
             return !existingAppointments?.some(apt => {
                 const aptStart = new Date(apt.start_time);
@@ -190,7 +194,7 @@ async function checkAvailabilityHandler(req, res) {
 
 function generateDaySlots(date, duration) {
     const slots = [];
-    const { start, end, lunchStart, lunchEnd, slotDuration } = WORKING_HOURS;
+    const { start, end, lunchStart, lunchEnd } = WORKING_HOURS;
 
     // Offset de Brasília: UTC-3 (adicionar 3 horas para converter horário local para UTC)
     const BRASILIA_OFFSET_HOURS = 3;
@@ -199,7 +203,7 @@ function generateDaySlots(date, duration) {
         // Pular horário de almoço
         if (hour >= lunchStart && hour < lunchEnd) continue;
 
-        for (let minute = 0; minute < 60; minute += slotDuration) {
+        for (let minute = 0; minute < 60; minute += duration) {
             const slotDate = new Date(date);
             // Converter horário de Brasília para UTC (adicionar 3 horas)
             slotDate.setUTCHours(hour + BRASILIA_OFFSET_HOURS, minute, 0, 0);
