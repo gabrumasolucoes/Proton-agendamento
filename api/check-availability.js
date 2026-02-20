@@ -166,23 +166,41 @@ async function checkAvailabilityHandler(req, res) {
             });
         });
 
-        // Formatar resposta
-        return res.status(200).json({
+        // Formatar slots para resposta (time, dateTime, period)
+        const formattedAvailable = availableSlots.map(slot => ({
+            time: slot.time,
+            dateTime: slot.dateTime,
+            period: slot.period
+        }));
+
+        // Calcular suggestedSlots (1 antes + 1 depois do próximo agendado do dia) quando houver agendamentos
+        const { nextBookedSlotOnDay, suggestedSlots } = computeSuggestedSlotsAroundNext(
+            formattedAvailable,
+            existingAppointments || [],
+            duration
+        );
+
+        // Formatar resposta (campos suggestedSlots e nextBookedSlotOnDay opcionais – retrocompatível)
+        const responsePayload = {
             date: date,
             dayOfWeek: dayNames[targetDate.getDay()],
             available: availableSlots.length > 0,
             totalSlots: allSlots.length,
             availableCount: availableSlots.length,
-            availableSlots: availableSlots.map(slot => ({
-                time: slot.time,
-                dateTime: slot.dateTime,
-                period: slot.period
-            })),
-            message: availableSlots.length > 0 
+            availableSlots: formattedAvailable,
+            message: availableSlots.length > 0
                 ? `Temos ${availableSlots.length} horários disponíveis.`
                 : 'Não há horários disponíveis nesta data.',
             suggestedMessage: formatSuggestedMessage(availableSlots, targetDate)
-        });
+        };
+        if (nextBookedSlotOnDay) {
+            responsePayload.nextBookedSlotOnDay = nextBookedSlotOnDay;
+        }
+        if (suggestedSlots && suggestedSlots.length > 0) {
+            responsePayload.suggestedSlots = suggestedSlots;
+        }
+
+        return res.status(200).json(responsePayload);
 
     } catch (error) {
         console.error('Erro na API check-availability:', error);
@@ -253,6 +271,59 @@ function formatSuggestedMessage(slots, date) {
     }
 
     return `Para ${dateStr}, temos ${slots.length} horários. Alguns disponíveis: ${timeList}. Qual horário prefere?`;
+}
+
+/**
+ * Calcula o "próximo compromisso" do dia e até 2 slots sugeridos: um imediatamente anterior
+ * e um imediatamente posterior ao início/fim desse compromisso (para oferta de 2 opções ao cliente).
+ * @param {Array<{ time: string, dateTime: string, period?: string }>} availableSlots - Slots já formatados
+ * @param {Array<{ start_time: string, end_time: string }>} existingAppointments - Agendamentos do dia
+ * @param {number} durationMinutes - Duração do slot em minutos
+ * @returns {{ nextBookedSlotOnDay?: { time: string, dateTime: string }, suggestedSlots: Array }}
+ */
+function computeSuggestedSlotsAroundNext(availableSlots, existingAppointments, durationMinutes) {
+    const result = { suggestedSlots: [] };
+    if (!existingAppointments || existingAppointments.length === 0) {
+        return result;
+    }
+
+    // Ordenar por start_time e pegar o primeiro compromisso do dia
+    const sorted = [...existingAppointments].sort(
+        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
+    const nextApt = sorted[0];
+    const aptStart = new Date(nextApt.start_time);
+    const aptEnd = new Date(nextApt.end_time);
+
+    // Formatar próximo compromisso para resposta (HH:MM em Brasília, alinhado ao formato dos slots)
+    const timeStr = aptStart.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
+    result.nextBookedSlotOnDay = { time: timeStr, dateTime: nextApt.start_time };
+
+    const durationMs = durationMinutes * 60 * 1000;
+    let slotBefore = null;
+    let slotAfter = null;
+
+    for (const slot of availableSlots) {
+        const slotStart = new Date(slot.dateTime);
+        const slotEnd = new Date(slotStart.getTime() + durationMs);
+
+        // Imediatamente anterior: slot termina no máximo no início do compromisso
+        if (slotEnd.getTime() <= aptStart.getTime()) {
+            if (!slotBefore || new Date(slot.dateTime).getTime() > new Date(slotBefore.dateTime).getTime()) {
+                slotBefore = slot;
+            }
+        }
+        // Imediatamente posterior: slot começa no mínimo no fim do compromisso
+        if (slotStart.getTime() >= aptEnd.getTime()) {
+            if (!slotAfter || new Date(slot.dateTime).getTime() < new Date(slotAfter.dateTime).getTime()) {
+                slotAfter = slot;
+            }
+        }
+    }
+
+    if (slotBefore) result.suggestedSlots.push(slotBefore);
+    if (slotAfter) result.suggestedSlots.push(slotAfter);
+    return result;
 }
 
 module.exports = checkAvailabilityHandler;
