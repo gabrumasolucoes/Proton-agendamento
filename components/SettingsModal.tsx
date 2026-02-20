@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff, Bell, BellOff, Clock } from 'lucide-react';
+import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff, Bell, BellOff } from 'lucide-react';
 import { DoctorProfile, User, BusinessHoursRow } from '../types';
 import { apiAuth, apiAgendaBlocks, AgendaBlock, apiReminderSettings, apiBusinessHours } from '../services/api';
 
@@ -423,10 +423,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
                 <button 
                     onClick={() => setActiveTab('horarios')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'horarios' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'horarios' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                     data-settings-tab="horarios"
                 >
-                    <Clock className="w-4 h-4 flex-shrink-0" />
                     Horário de atendimento
                 </button>
                 <button 
@@ -782,8 +781,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {activeTab === 'horarios' && (
                     <div className="space-y-6">
                         <div>
-                            <h3 className="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-indigo-600" />
+                            <h3 className="text-base font-bold text-slate-800 mb-1">
                                 Horário de atendimento
                             </h3>
                             <p className="text-sm text-slate-500 mb-4">

@@ -26,12 +26,14 @@ interface CalendarGridProps {
   searchTerm: string;
   isReadOnly?: boolean;
   agendaBlocks?: AgendaBlock[];
+  /** Dias da semana fechados por horário de atendimento (0=dom .. 6=sáb). Mesma indicação visual dos bloqueios de agenda. */
+  closedWeekdays?: number[];
   doctors?: DoctorProfile[]; // Lista de profissionais para exibir nomes
 }
 
-function isDayBlocked(day: Date, blocks: AgendaBlock[]): boolean {
+function isDayBlocked(day: Date, blocks: AgendaBlock[], closedByHours?: number[]): boolean {
+  if (closedByHours && closedByHours.length > 0 && closedByHours.includes(day.getDay())) return true;
   // Só mostrar bloqueio visual se for bloqueio da CLÍNICA INTEIRA (doctor_id = null)
-  // Bloqueios individuais por profissional não devem afetar a visualização geral
   const active = (blocks || []).filter((b) => b.active && b.doctor_id === null);
   const yyyy = day.getFullYear();
   const mm = String(day.getMonth() + 1).padStart(2, '0');
@@ -46,7 +48,7 @@ function isDayBlocked(day: Date, blocks: AgendaBlock[]): boolean {
   return false;
 }
 
-export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMode, appointments, onSelectAppointment, searchTerm, isReadOnly = false, agendaBlocks, doctors = [] }) => {
+export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMode, appointments, onSelectAppointment, searchTerm, isReadOnly = false, agendaBlocks, closedWeekdays, doctors = [] }) => {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -154,7 +156,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                         .filter(apt => isSameDay(apt.start, day))
                         .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-                      const blocked = isDayBlocked(day, agendaBlocks || []);
+                      const blocked = isDayBlocked(day, agendaBlocks || [], closedWeekdays);
                       // Logic for background color of the cell
                       let bgClass = 'bg-white';
                       if (blocked) {
@@ -237,7 +239,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                 <div className="flex-1 flex overflow-hidden">
                 {weekDays.map((day, i) => {
                     const isToday = isSameDay(day, now);
-                    const blocked = isDayBlocked(day, agendaBlocks || []);
+                    const blocked = isDayBlocked(day, agendaBlocks || [], closedWeekdays);
                     return (
                     <div key={i} className={`flex-1 text-center py-4 min-w-[120px] group border-l border-transparent transition-colors rounded-b-xl ${blocked ? 'bg-amber-50/80' : isToday ? 'bg-indigo-50/50' : 'hover:bg-slate-50/50'}`}>
                         <div className={`text-[11px] font-bold uppercase tracking-widest mb-1.5 ${blocked ? 'text-amber-700' : isToday ? 'text-indigo-700' : 'text-slate-400'}`}>
@@ -274,7 +276,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                         <div className="absolute inset-0 flex">
                             {weekDays.map((day, i) => {
                                 const isToday = isSameDay(day, now);
-                                const blocked = isDayBlocked(day, agendaBlocks || []);
+                                const blocked = isDayBlocked(day, agendaBlocks || [], closedWeekdays);
                                 return (
                                     <div key={i} className={`flex-1 border-l border-slate-100/60 h-full relative ${blocked ? 'bg-amber-50/50' : isToday ? 'bg-indigo-50/40 ring-1 ring-inset ring-indigo-50' : ''}`}>
                                         {blocked && <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-300/70" title="Dia bloqueado"></div>}

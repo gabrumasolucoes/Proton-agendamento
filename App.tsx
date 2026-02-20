@@ -16,7 +16,7 @@ import { UsersManagementModal } from './components/UsersManagementModal';
 import { Toast } from './components/Toast'; // NOVO
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
-import { apiData, apiAuth, apiAgendaBlocks } from './services/api';
+import { apiData, apiAuth, apiAgendaBlocks, apiBusinessHours } from './services/api';
 import type { AgendaBlock } from './services/api';
 import { ensureSupabase } from './lib/supabase';
 
@@ -59,6 +59,7 @@ const App: React.FC = () => {
   // State for tags
   const [tags, setTags] = useState<ProcedureTag[]>(DEFAULT_TAGS);
   const [agendaBlocks, setAgendaBlocks] = useState<AgendaBlock[]>([]);
+  const [closedWeekdays, setClosedWeekdays] = useState<number[]>([]); // dias fechados por horário de atendimento (0=dom .. 6=sáb)
 
   // --- Auth & Data Loading Logic ---
 
@@ -125,6 +126,7 @@ const App: React.FC = () => {
               setPatients([]);
               setDoctors([]);
               setAgendaBlocks([]);
+              setClosedWeekdays([]);
               setNotifications([]);
               setLoading(false);
               return;
@@ -147,7 +149,8 @@ const App: React.FC = () => {
 
           // Se estiver em mirror mode, usar endpoint admin que bypassa RLS
           if (mirrorMode.isActive && mirrorMode.userId && user?.isAdmin) {
-              setAgendaBlocks([]); // mirror: RLS impede buscar blocos de outro usuário
+              setAgendaBlocks([]);
+              setClosedWeekdays([]);
               console.log('[loadData] Usando endpoint admin para mirror mode');
               try {
                   const headers: Record<string, string> = {};
@@ -204,6 +207,8 @@ const App: React.FC = () => {
               });
               const blks = isDemo ? [] : await apiAgendaBlocks.getBlocks(targetUserId);
               setAgendaBlocks(blks);
+              const hours = isDemo || mirrorMode.isActive ? [] : await apiBusinessHours.getBusinessHours(targetUserId);
+              setClosedWeekdays(hours.filter((r) => !r.active).map((r) => r.day_of_week));
           }
 
           setAppointments(apts);
@@ -588,6 +593,7 @@ const App: React.FC = () => {
                     searchTerm={searchTerm}
                     isReadOnly={mirrorMode.isActive}
                     agendaBlocks={agendaBlocks}
+                    closedWeekdays={closedWeekdays}
                     doctors={doctors}
                 />
               );
@@ -812,6 +818,9 @@ const App: React.FC = () => {
               setIsSettingsOpen(false);
               if (user && !isDemoMode && !mirrorMode.isActive) {
                 apiAgendaBlocks.getBlocks(user.id).then(setAgendaBlocks);
+                apiBusinessHours.getBusinessHours(user.id).then((rows) =>
+                  setClosedWeekdays(rows.filter((r) => !r.active).map((r) => r.day_of_week))
+                );
               }
             }}
             doctors={doctors}
