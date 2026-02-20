@@ -313,13 +313,18 @@ async function findDoctor(doctorName, userId, protonDoctorId) {
     return doctors?.[0] || null;
 }
 
+// Overlap: dois intervalos [A_start, A_end] e [B_start, B_end] se sobrepõem quando
+// A_start < B_end e A_end > B_start (intervalos abertos à direita: 09:00-10:00 e 10:00-11:00 NÃO se sobrepõem).
 async function checkAvailability(startDate, endDate, doctorId, userId) {
+    const startIso = startDate.toISOString();
+    const endIso = endDate.toISOString();
     let query = supabase
         .from('appointments')
         .select('id')
         .eq('user_id', userId)
         .neq('status', 'cancelled')
-        .or(`and(start_time.lte.${endDate.toISOString()},end_time.gte.${startDate.toISOString()})`);
+        .lt('start_time', endIso)
+        .gt('end_time', startIso);
 
     if (doctorId) {
         query = query.eq('doctor_id', doctorId);
