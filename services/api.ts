@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { Appointment, DoctorProfile, Patient, User, ReminderSettings } from '../types';
+import { Appointment, DoctorProfile, Patient, User, ReminderSettings, BusinessHoursRow } from '../types';
 import { MOCK_APPOINTMENTS, MOCK_PATIENTS } from '../constants';
 import { protonCache } from '../lib/proton-cache';
 
@@ -188,7 +188,7 @@ export const apiData = {
       end_time: apt.end.toISOString(),
       status: apt.status,
       notes: apt.notes,
-      source: apt.source,
+      source: isNew ? 'manual' : (apt.source ?? 'manual'),
       tags: apt.tags
     };
 
@@ -756,6 +756,63 @@ export const apiReminderSettings = {
     } catch (error: any) {
       console.error('❌ [Reminder Settings] Exceção ao atualizar:', error);
       return { success: false, error: error.message || 'Erro ao atualizar configurações' };
+    }
+  }
+};
+
+// --- Business Hours API (horário de atendimento por dia) ---
+
+const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+export const apiBusinessHours = {
+  DAY_NAMES,
+
+  async getBusinessHours(userId: string): Promise<BusinessHoursRow[]> {
+    const { data, error } = await supabase
+      .from('business_hours')
+      .select('id, day_of_week, start_time, end_time, lunch_start, lunch_end, active')
+      .eq('user_id', userId)
+      .order('day_of_week');
+    if (error) {
+      console.error('❌ [Business Hours] Erro ao buscar:', error);
+      return [];
+    }
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      day_of_week: r.day_of_week,
+      start_time: r.start_time || '08:00',
+      end_time: r.end_time || '18:00',
+      lunch_start: r.lunch_start ?? null,
+      lunch_end: r.lunch_end ?? null,
+      active: r.active !== false
+    }));
+  },
+
+  async saveBusinessHours(userId: string, rows: BusinessHoursRow[]): Promise<{ success: boolean; error?: string }> {
+    try {
+      for (const row of rows) {
+        const payload = {
+          user_id: userId,
+          day_of_week: row.day_of_week,
+          start_time: row.start_time,
+          end_time: row.end_time,
+          lunch_start: row.lunch_start || null,
+          lunch_end: row.lunch_end || null,
+          active: row.active,
+          updated_at: new Date().toISOString()
+        };
+        const { error } = await supabase
+          .from('business_hours')
+          .upsert(payload, { onConflict: 'user_id,day_of_week' });
+        if (error) {
+          console.error('❌ [Business Hours] Erro ao salvar:', error);
+          return { success: false, error: error.message };
+        }
+      }
+      return { success: true };
+    } catch (e: any) {
+      console.error('❌ [Business Hours] Exceção:', e);
+      return { success: false, error: e.message || 'Erro ao salvar horários' };
     }
   }
 };

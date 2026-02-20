@@ -20,6 +20,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { getBlocksForUser, isDateBlocked } = require('../lib/agenda-blocks');
+const { getBusinessHoursForDay, isWithinBusinessHours } = require('../lib/business-hours');
 
 // Configuração do Supabase - usar service_role key para bypass de RLS
 // ⚠️ CRÍTICO: NUNCA hardcode chaves de segurança. Use apenas variáveis de ambiente.
@@ -72,8 +73,10 @@ async function createAppointmentHandler(req, res) {
             doctorName,
             notes = 'Agendado via WhatsApp - Vigil',
             protonUserId,      // ID do usuário/login no Proton (obrigatório)
-            protonDoctorId     // ID do médico específico (opcional)
+            protonDoctorId,    // ID do médico específico (opcional)
+            source: rawSource   // 'chatbot' | 'manual' — manual permite fora do horário de atendimento
         } = req.body;
+        const source = (rawSource === 'manual') ? 'manual' : 'chatbot';
         const duration = parseInt(rawDuration, 10);
         if (duration !== 30 && duration !== 60) {
             return res.status(400).json({ error: 'Campo "duration" deve ser 30 ou 60.' });
@@ -123,6 +126,25 @@ async function createAppointmentHandler(req, res) {
             });
         }
 
+        // Validar horário dentro do expediente (exceto quando source === 'manual')
+        if (source !== 'manual') {
+            const businessHours = await getBusinessHoursForDay(supabase, protonUserId, startDate.getDay());
+            if (!businessHours) {
+                return res.status(409).json({
+                    error: 'Dia fechado para agendamento',
+                    message: 'Não atendemos neste dia. Escolha outro dia ou use agendamento manual no painel.'
+                });
+            }
+            const utcHours = startDate.getUTCHours() + startDate.getUTCMinutes() / 60;
+            const hourBrasilia = (utcHours - 3 + 24) % 24;
+            if (!isWithinBusinessHours(businessHours, hourBrasilia, duration)) {
+                return res.status(409).json({
+                    error: 'Fora do horário de atendimento',
+                    message: 'Este horário está fora do expediente. Escolha um horário dentro do atendimento ou use agendamento manual no painel.'
+                });
+            }
+        }
+
         // 1. Buscar ou criar paciente (vinculado ao usuário do Proton) — telefone sempre normalizado E.164
         let patient = await findOrCreatePatient(patientName, normalizedPhone, protonUserId);
 
@@ -152,8 +174,8 @@ async function createAppointmentHandler(req, res) {
             end_time: endDate.toISOString(),
             status: 'pending',
             notes: notes,
-            source: 'chatbot',
-            tags: ['whatsapp', 'vigil']
+            source: source,
+            tags: source === 'manual' ? ['manual'] : ['whatsapp', 'vigil']
         };
 
         const { data: appointment, error } = await supabase

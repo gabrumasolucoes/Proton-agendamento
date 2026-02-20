@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff, Bell, BellOff } from 'lucide-react';
-import { DoctorProfile, User } from '../types';
-import { apiAuth, apiAgendaBlocks, AgendaBlock, apiReminderSettings } from '../services/api';
+import { X, UserPlus, Trash2, User as UserIcon, Building2, Save, Calendar, CalendarOff, Bell, BellOff, Clock } from 'lucide-react';
+import { DoctorProfile, User, BusinessHoursRow } from '../types';
+import { apiAuth, apiAgendaBlocks, AgendaBlock, apiReminderSettings, apiBusinessHours } from '../services/api';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -33,7 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentUser,
   onUserUpdate
 }) => {
-  const [activeTab, setActiveTab] = useState<'doctors' | 'account' | 'agenda' | 'reminders'>('doctors');
+  const [activeTab, setActiveTab] = useState<'doctors' | 'account' | 'agenda' | 'horarios' | 'reminders'>('doctors');
   const [newDocName, setNewDocName] = useState('');
   const [newDocRole, setNewDocRole] = useState('');
   const [newDocColor, setNewDocColor] = useState(PRESET_COLORS[0].value);
@@ -73,6 +73,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSavingReminders, setIsSavingReminders] = useState(false);
   const [reminderSaveMessage, setReminderSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  // Business hours (horário de atendimento por dia)
+  const [businessHoursRows, setBusinessHoursRows] = useState<BusinessHoursRow[]>([]);
+  const [businessHoursLoading, setBusinessHoursLoading] = useState(false);
+  const [businessHoursSaving, setBusinessHoursSaving] = useState(false);
+  const [businessHoursMessage, setBusinessHoursMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   useEffect(() => {
     if (currentUser) {
       setUserName(currentUser.name || '');
@@ -93,6 +99,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (activeTab === 'agenda' && currentUser?.id) {
       setBlocksLoading(true);
       apiAgendaBlocks.getBlocks(currentUser.id).then((b) => { setBlocks(b); setBlocksLoading(false); });
+    }
+  }, [activeTab, currentUser?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'horarios' && currentUser?.id) {
+      setBusinessHoursLoading(true);
+      apiBusinessHours.getBusinessHours(currentUser.id).then((rows) => {
+        const byDay: Record<number, BusinessHoursRow> = {};
+        rows.forEach((r) => { byDay[r.day_of_week] = r; });
+        const merged: BusinessHoursRow[] = [];
+        for (let d = 0; d <= 6; d++) {
+          merged.push(byDay[d] ?? {
+            day_of_week: d,
+            start_time: '08:00',
+            end_time: '18:00',
+            lunch_start: d >= 1 && d <= 5 ? '12:00' : null,
+            lunch_end: d >= 1 && d <= 5 ? '13:00' : null,
+            active: d >= 1 && d <= 5
+          });
+        }
+        setBusinessHoursRows(merged);
+        setBusinessHoursLoading(false);
+      });
     }
   }, [activeTab, currentUser?.id]);
 
@@ -332,6 +361,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const handleSaveBusinessHours = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.id) return;
+    setBusinessHoursMessage(null);
+    setBusinessHoursSaving(true);
+    try {
+      const { success, error } = await apiBusinessHours.saveBusinessHours(currentUser.id, businessHoursRows);
+      if (success) {
+        setBusinessHoursMessage({ type: 'success', text: 'Horários de atendimento salvos com sucesso!' });
+      } else {
+        setBusinessHoursMessage({ type: 'error', text: error || 'Erro ao salvar.' });
+      }
+    } catch (err: any) {
+      setBusinessHoursMessage({ type: 'error', text: err.message || 'Erro ao salvar horários.' });
+    } finally {
+      setBusinessHoursSaving(false);
+    }
+  };
+
+  const updateBusinessHoursRow = (dayOfWeek: number, patch: Partial<BusinessHoursRow>) => {
+    setBusinessHoursRows((prev) =>
+      prev.map((r) => (r.day_of_week === dayOfWeek ? { ...r, ...patch } : r))
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
@@ -346,9 +400,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
            </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar Tabs */}
-            <div className="w-48 border-r border-slate-200 bg-slate-50 p-4 space-y-2">
+        <div className="flex flex-1 overflow-hidden min-h-0">
+            {/* Sidebar Tabs - rolável para garantir que "Horário de atendimento" apareça */}
+            <div className="w-48 border-r border-slate-200 bg-slate-50 p-4 space-y-2 overflow-y-auto flex-shrink-0">
                 <button 
                     onClick={() => setActiveTab('doctors')}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'doctors' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
@@ -366,6 +420,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'agenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
                     Agenda
+                </button>
+                <button 
+                    onClick={() => setActiveTab('horarios')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'horarios' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                    data-settings-tab="horarios"
+                >
+                    <Clock className="w-4 h-4 flex-shrink-0" />
+                    Horário de atendimento
                 </button>
                 <button 
                     onClick={() => setActiveTab('reminders')}
@@ -713,6 +775,109 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
                             </>
                         )}
+                    </div>
+                )}
+
+                {/* Aba Horário de atendimento */}
+                {activeTab === 'horarios' && (
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                <Clock className="w-5 h-5 text-indigo-600" />
+                                Horário de atendimento
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-4">
+                                Defina início e fim do expediente por dia da semana. Dias inativos não oferecem horários para agendamento (API/chatbot). Agendamentos manuais no painel podem ser feitos em qualquer horário.
+                            </p>
+
+                            {businessHoursLoading ? (
+                                <p className="text-sm text-slate-500">Carregando...</p>
+                            ) : (
+                                <form onSubmit={handleSaveBusinessHours} className="space-y-4">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+                                            <thead className="bg-slate-50">
+                                                <tr>
+                                                    <th className="text-left px-3 py-2 font-medium text-slate-700">Dia</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-slate-700">Ativo</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-slate-700">Início</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-slate-700">Fim</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-slate-700">Almoço início</th>
+                                                    <th className="text-left px-3 py-2 font-medium text-slate-700">Almoço fim</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {businessHoursRows.map((row) => (
+                                                    <tr key={row.day_of_week} className="border-t border-slate-200 hover:bg-slate-50/50">
+                                                        <td className="px-3 py-2 font-medium text-slate-800">{apiBusinessHours.DAY_NAMES[row.day_of_week]}</td>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={row.active}
+                                                                onChange={(e) => updateBusinessHoursRow(row.day_of_week, { active: e.target.checked })}
+                                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="time"
+                                                                value={row.start_time}
+                                                                onChange={(e) => updateBusinessHoursRow(row.day_of_week, { start_time: e.target.value })}
+                                                                className="w-28 px-2 py-1 border border-slate-300 rounded text-slate-800"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="time"
+                                                                value={row.end_time}
+                                                                onChange={(e) => updateBusinessHoursRow(row.day_of_week, { end_time: e.target.value })}
+                                                                className="w-28 px-2 py-1 border border-slate-300 rounded text-slate-800"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="time"
+                                                                value={row.lunch_start ?? ''}
+                                                                onChange={(e) => updateBusinessHoursRow(row.day_of_week, { lunch_start: e.target.value || null })}
+                                                                className="w-28 px-2 py-1 border border-slate-300 rounded text-slate-800"
+                                                                placeholder="—"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <input
+                                                                type="time"
+                                                                value={row.lunch_end ?? ''}
+                                                                onChange={(e) => updateBusinessHoursRow(row.day_of_week, { lunch_end: e.target.value || null })}
+                                                                className="w-28 px-2 py-1 border border-slate-300 rounded text-slate-800"
+                                                                placeholder="—"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p className="text-xs text-slate-500">
+                                        Padrão: Segunda a Sexta 08:00–18:00 com almoço 12:00–13:00. Sábado e Domingo fechados. Deixe almoço em branco para não ter intervalo.
+                                    </p>
+                                    <div className="pt-2 flex items-center gap-3">
+                                        <button
+                                            type="submit"
+                                            disabled={businessHoursSaving}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            <Save className="w-4 h-4" />
+                                            {businessHoursSaving ? 'Salvando...' : 'Salvar horários'}
+                                        </button>
+                                        {businessHoursMessage && (
+                                            <span className={`text-sm ${businessHoursMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                                                {businessHoursMessage.text}
+                                            </span>
+                                        )}
+                                    </div>
+                                </form>
+                            )}
+                        </div>
                     </div>
                 )}
 

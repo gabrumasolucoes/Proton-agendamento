@@ -90,6 +90,17 @@ export interface AppNotification {
   type: 'info' | 'success' | 'warning' | 'alert';
 }
 
+// Horário de atendimento por dia (business_hours). day_of_week: 0=domingo .. 6=sábado
+export interface BusinessHoursRow {
+  id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  lunch_start: string | null;
+  lunch_end: string | null;
+  active: boolean;
+}
+
 // Configurações de lembretes (F2)
 export interface ReminderSettings {
   enabled: boolean;

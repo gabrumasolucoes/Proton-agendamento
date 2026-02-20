@@ -15,6 +15,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { getBlocksForUser, isDateBlocked } = require('../lib/agenda-blocks');
+const { getBusinessHoursForDay } = require('../lib/business-hours');
 
 // Configuração do Supabase - Usar service_role para bypass de RLS
 // ⚠️ CRÍTICO: NUNCA hardcode chaves de segurança. Use apenas variáveis de ambiente.
@@ -35,13 +36,12 @@ const supabase = SUPABASE_URL && SUPABASE_KEY
     })
     : null;
 
-// Configuração de horário de funcionamento
-const WORKING_HOURS = {
-    start: 8,  // 8:00
-    end: 18,   // 18:00
-    lunchStart: 12, // 12:00
-    lunchEnd: 13,   // 13:00
-    slotDuration: 30 // minutos
+// Fallback quando business_hours não retorna config (usado só em generateDaySlots se hours for passado)
+const WORKING_HOURS_FALLBACK = {
+    start: 8,
+    end: 18,
+    lunchStart: 12,
+    lunchEnd: 13
 };
 
 async function checkAvailabilityHandler(req, res) {
@@ -104,20 +104,22 @@ async function checkAvailabilityHandler(req, res) {
             });
         }
 
-        // Verificar se é dia útil (não domingo) — mantido para compatibilidade
-        if (targetDate.getDay() === 0) {
+        // Horário de atendimento para este dia (por business_hours ou default)
+        const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        const businessHours = await getBusinessHoursForDay(supabase, protonUserId, targetDate.getDay());
+        if (!businessHours) {
             return res.status(200).json({
                 date: date,
-                dayOfWeek: 'Domingo',
+                dayOfWeek: dayNames[targetDate.getDay()],
                 available: false,
-                message: 'Não atendemos aos domingos.',
+                message: 'Não atendemos neste dia.',
                 availableSlots: [],
                 nextAvailableDate: getNextBusinessDay(targetDate)
             });
         }
 
-        // Gerar todos os slots do dia
-        const allSlots = generateDaySlots(targetDate, duration);
+        // Gerar todos os slots do dia dentro do expediente configurado
+        const allSlots = generateDaySlots(targetDate, duration, businessHours);
 
         // Buscar agendamentos existentes no dia
         const dayStart = new Date(targetDate);
@@ -165,8 +167,6 @@ async function checkAvailabilityHandler(req, res) {
         });
 
         // Formatar resposta
-        const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-
         return res.status(200).json({
             date: date,
             dayOfWeek: dayNames[targetDate.getDay()],
@@ -192,29 +192,27 @@ async function checkAvailabilityHandler(req, res) {
 
 // Funções auxiliares
 
-function generateDaySlots(date, duration) {
+function generateDaySlots(date, duration, hours) {
     const slots = [];
-    const { start, end, lunchStart, lunchEnd } = WORKING_HOURS;
+    const { start, end, lunchStart, lunchEnd } = hours || WORKING_HOURS_FALLBACK;
 
-    // Offset de Brasília: UTC-3 (adicionar 3 horas para converter horário local para UTC)
+    // Offset de Brasília: UTC-3
     const BRASILIA_OFFSET_HOURS = 3;
+    const hasLunch = lunchStart != null && lunchEnd != null;
 
-    for (let hour = start; hour < end; hour++) {
-        // Pular horário de almoço
-        if (hour >= lunchStart && hour < lunchEnd) continue;
+    for (let hour = Math.floor(start); hour < end; hour++) {
+        if (hasLunch && hour >= lunchStart && hour < lunchEnd) continue;
 
         for (let minute = 0; minute < 60; minute += duration) {
             const slotDate = new Date(date);
-            // Converter horário de Brasília para UTC (adicionar 3 horas)
             slotDate.setUTCHours(hour + BRASILIA_OFFSET_HOURS, minute, 0, 0);
 
-            // Não incluir slots no passado (comparar em UTC)
             if (slotDate < new Date()) continue;
 
-            // Verificar se o slot completo cabe antes do fim do expediente ou almoço
             const slotEnd = new Date(slotDate.getTime() + duration * 60000);
             const slotEndHourBrasilia = slotEnd.getUTCHours() - BRASILIA_OFFSET_HOURS;
-            if (slotEndHourBrasilia > end || (slotEndHourBrasilia >= lunchStart && hour < lunchStart)) continue;
+            if (slotEndHourBrasilia > end) continue;
+            if (hasLunch && hour < lunchStart && slotEndHourBrasilia > lunchStart) continue;
 
             slots.push({
                 time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
