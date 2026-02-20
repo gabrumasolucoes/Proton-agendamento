@@ -137,9 +137,9 @@ export const apiData = {
     }));
   },
 
-  async saveAppointment(apt: any, userId: string, isDemo: boolean): Promise<Appointment | null> {
+  async saveAppointment(apt: any, userId: string, isDemo: boolean, options?: { skipBlockCheck?: boolean }): Promise<Appointment | null> {
     // Check if ID is a valid UUID (length 36) to decide Insert vs Update
-    const isNew = !apt.id || String(apt.id).length < 30; 
+    const isNew = !apt.id || String(apt.id).length < 30;
 
     console.log(`💾 [saveAppointment] INÍCIO - isNew: ${isNew}, doctorId: ${apt.doctorId}, start: ${apt.start}`);
 
@@ -147,17 +147,18 @@ export const apiData = {
       return { ...apt, id: isNew ? Math.random().toString(36).substr(2, 9) : apt.id } as Appointment;
     }
 
-    // VALIDAÇÃO 1: Verificar bloqueios de agenda (para novo E edição)
-    console.log(`🔍 [saveAppointment] Verificando bloqueios...`);
-    const blocks = await apiAgendaBlocks.getBlocks(userId);
-    const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
-    if (isBlocked.blocked) {
-      console.error('❌ [saveAppointment] BLOQUEIO DETECTADO - INTERROMPENDO SALVAMENTO');
-      console.error('❌ Tentativa de agendar em dia bloqueado:', isBlocked.message);
-      console.error('❌ LANÇANDO ERRO DE BLOQUEIO PARA APP.TSX');
-      const error = new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
-      console.error('❌ Erro criado:', error.message);
-      throw error; // ← Deve interromper AQUI
+    // VALIDAÇÃO 1: Verificar bloqueios de agenda (pode ser ignorada com skipBlockCheck para agendamento manual)
+    if (!options?.skipBlockCheck) {
+      console.log(`🔍 [saveAppointment] Verificando bloqueios...`);
+      const blocks = await apiAgendaBlocks.getBlocks(userId);
+      const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId);
+      if (isBlocked.blocked) {
+        console.error('❌ [saveAppointment] BLOQUEIO DETECTADO - INTERROMPENDO SALVAMENTO');
+        const error = new Error(isBlocked.message || 'Esta data não está disponível para agendamento.');
+        throw error;
+      }
+    } else {
+      console.log(`🔍 [saveAppointment] skipBlockCheck=true, pulando verificação de bloqueio`);
     }
     console.log(`✅ [saveAppointment] Sem bloqueios`);
 
@@ -605,6 +606,40 @@ function checkIfDateIsBlocked(blocks: AgendaBlock[], date: Date, doctorId: strin
   }
 
   return { blocked: false };
+}
+
+/** Retorna se o agendamento está em dia bloqueado ou fora do horário de atendimento (para exibir confirmação antes de salvar). */
+export async function getAppointmentRequiresConfirmation(
+  apt: { start: Date; end: Date; doctorId?: string | null },
+  userId: string
+): Promise<{ needConfirm: boolean; message: string }> {
+  const blocks = await apiAgendaBlocks.getBlocks(userId);
+  const isBlocked = checkIfDateIsBlocked(blocks, apt.start, apt.doctorId ?? null);
+  if (isBlocked.blocked) {
+    return { needConfirm: true, message: isBlocked.message || 'Este dia está bloqueado para agendamento.' };
+  }
+  const hours = await apiBusinessHours.getBusinessHours(userId);
+  const row = hours.find((r) => r.day_of_week === apt.start.getDay());
+  if (!row || !row.active) {
+    return { needConfirm: true, message: 'Este dia está fechado no horário de atendimento.' };
+  }
+  const parseHHMM = (s: string) => {
+    const [h, m] = (s || '00:00').split(':').map(Number);
+    return (h || 0) + (m || 0) / 60;
+  };
+  const startHour = apt.start.getHours() + apt.start.getMinutes() / 60;
+  const endHour = apt.end.getHours() + apt.end.getMinutes() / 60;
+  const dayStart = parseHHMM(row.start_time);
+  const dayEnd = parseHHMM(row.end_time);
+  const lunchStart = row.lunch_start != null ? parseHHMM(row.lunch_start) : null;
+  const lunchEnd = row.lunch_end != null ? parseHHMM(row.lunch_end) : null;
+  if (startHour < dayStart || endHour > dayEnd) {
+    return { needConfirm: true, message: 'Este horário está fora do expediente de atendimento.' };
+  }
+  if (lunchStart != null && lunchEnd != null && (startHour < lunchEnd && endHour > lunchStart)) {
+    return { needConfirm: true, message: 'Este horário está no intervalo de almoço.' };
+  }
+  return { needConfirm: false, message: '' };
 }
 
 // Função auxiliar para verificar conflito de horário

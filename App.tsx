@@ -16,7 +16,7 @@ import { UsersManagementModal } from './components/UsersManagementModal';
 import { Toast } from './components/Toast'; // NOVO
 import { DEFAULT_TAGS, MOCK_NOTIFICATIONS } from './constants';
 import { Appointment, ProcedureTag, DoctorProfile, Patient, AppNotification, CalendarViewMode, User } from './types';
-import { apiData, apiAuth, apiAgendaBlocks, apiBusinessHours } from './services/api';
+import { apiData, apiAuth, apiAgendaBlocks, apiBusinessHours, getAppointmentRequiresConfirmation } from './services/api';
 import type { AgendaBlock } from './services/api';
 import { ensureSupabase } from './lib/supabase';
 
@@ -462,9 +462,26 @@ const App: React.FC = () => {
         doctorId: appointmentData.doctorId || doctors[0]?.id
     };
 
+    let skipBlockCheck = false;
     try {
+        if (!isDemoMode && user) {
+            const { needConfirm, message } = await getAppointmentRequiresConfirmation(appointmentToSave, targetUserId);
+            if (needConfirm) {
+                const confirmar = window.confirm(
+                    `${message}\n\nDeseja mesmo agendar este horário? (Agendamento manual permitido.)`
+                );
+                if (!confirmar) return;
+                skipBlockCheck = true;
+            }
+        }
+
         console.log('🔍 [App.tsx] Tentando salvar agendamento...');
-        const savedApt = await apiData.saveAppointment(appointmentToSave, targetUserId, isDemoMode);
+        const savedApt = await apiData.saveAppointment(
+            appointmentToSave,
+            targetUserId,
+            isDemoMode,
+            skipBlockCheck ? { skipBlockCheck: true } : undefined
+        );
         console.log('✅ [App.tsx] saveAppointment retornou:', savedApt);
         
         if (savedApt) {
