@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabase';
 import { NoShowAnalytics } from '../types';
 
 /**
- * Busca analytics de no-shows para um período
+ * Busca analytics de no-shows para um período.
+ * Inclui faltas já marcadas (no_show_at) e faltas detectadas no relatório (on-demand): confirmed/pending com horário passado + tolerância, ainda não marcadas.
  */
 export async function getNoShowAnalytics(
   userId: string,
@@ -15,6 +16,36 @@ export async function getNoShowAnalytics(
   toDate: Date
 ): Promise<NoShowAnalytics> {
   try {
+    // Tolerância no-show da empresa (minutos após start_time para considerar falta)
+    let toleranceMinutes = 30;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('no_show_tolerance_minutes')
+      .eq('id', userId)
+      .single();
+    if (profile?.no_show_tolerance_minutes != null) {
+      toleranceMinutes = Math.max(0, profile.no_show_tolerance_minutes);
+    }
+
+    // Opção A: Faltas detectadas (não marcadas) – confirmed/pending no período, horário já passou há mais de toleranceMinutes
+    const { data: eligibleAppointments, error: eligibleError } = await supabase
+      .from('appointments')
+      .select('id, start_time')
+      .eq('user_id', userId)
+      .in('status', ['confirmed', 'pending'])
+      .is('no_show_at', null)
+      .gte('start_time', fromDate.toISOString())
+      .lte('start_time', toDate.toISOString());
+
+    let noShowsDetectedNotMarked = 0;
+    if (!eligibleError && eligibleAppointments?.length) {
+      const now = Date.now();
+      const toleranceMs = toleranceMinutes * 60 * 1000;
+      noShowsDetectedNotMarked = eligibleAppointments.filter(
+        (apt) => new Date(apt.start_time).getTime() + toleranceMs < now
+      ).length;
+    }
+
     // Buscar todos os agendamentos cancelados no período
     const { data: appointments, error } = await supabase
       .from('appointments')
@@ -114,6 +145,7 @@ export async function getNoShowAnalytics(
 
     return {
       totalNoShows: noShows.length,
+      noShowsDetectedNotMarked,
       totalCancellations: otherCancellations.length,
       totalCancelled: cancelled.length,
       cancelledByPatient,

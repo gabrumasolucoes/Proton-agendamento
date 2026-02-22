@@ -634,7 +634,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
               <div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-gray-500">Carregando análise...</p>
             </div>
-          ) : noShowAnalytics && noShowAnalytics.totalCancelled > 0 ? (
+          ) : noShowAnalytics && (noShowAnalytics.totalCancelled > 0 || (noShowAnalytics.noShowsDetectedNotMarked ?? 0) > 0) ? (
             <>
               {/* Cards de Métricas Principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -642,13 +642,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-1">Total de Faltas</p>
-                      <h3 className="text-3xl font-bold text-rose-600">{noShowAnalytics.totalNoShows}</h3>
+                      <h3 className="text-3xl font-bold text-rose-600">
+                        {noShowAnalytics.totalNoShows + (noShowAnalytics.noShowsDetectedNotMarked ?? 0)}
+                      </h3>
                     </div>
                     <div className="p-3 bg-rose-50 rounded-lg text-rose-600">
                       <UserX className="w-6 h-6" />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500">No-shows detectados pelo sistema</p>
+                  <p className="text-xs text-gray-500">
+                    {noShowAnalytics.totalNoShows} já marcadas no sistema
+                    {(noShowAnalytics.noShowsDetectedNotMarked ?? 0) > 0 && (
+                      <>, {(noShowAnalytics.noShowsDetectedNotMarked ?? 0)} detectadas no relatório (não marcadas)</>
+                    )}
+                  </p>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -682,7 +689,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
 
               {/* Análises Detalhadas */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Por Origem */}
+                {/* Por Origem – só exibe quando há cancelamentos (evita divisão por zero) */}
+                {noShowAnalytics.totalCancelled > 0 && (
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <h3 className="text-lg font-bold text-gray-800 mb-6">Origem dos Cancelamentos</h3>
                   <div className="space-y-4">
@@ -695,11 +703,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                         <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
                           <div 
                             className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(noShowAnalytics.cancelledByPatient / noShowAnalytics.totalCancellations) * 100}%` }}
+                            style={{ width: `${(noShowAnalytics.cancelledByPatient / noShowAnalytics.totalCancelled) * 100}%` }}
                           />
                         </div>
                         <span className="text-xs font-semibold text-blue-600 w-12 text-right">
-                          {((noShowAnalytics.cancelledByPatient / noShowAnalytics.totalCancellations) * 100).toFixed(0)}%
+                          {((noShowAnalytics.cancelledByPatient / noShowAnalytics.totalCancelled) * 100).toFixed(0)}%
                         </span>
                       </div>
                     </div>
@@ -713,11 +721,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                         <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
                           <div 
                             className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(noShowAnalytics.cancelledByOperator / noShowAnalytics.totalCancellations) * 100}%` }}
+                            style={{ width: `${(noShowAnalytics.cancelledByOperator / noShowAnalytics.totalCancelled) * 100}%` }}
                           />
                         </div>
                         <span className="text-xs font-semibold text-amber-600 w-12 text-right">
-                          {((noShowAnalytics.cancelledByOperator / noShowAnalytics.totalCancellations) * 100).toFixed(0)}%
+                          {((noShowAnalytics.cancelledByOperator / noShowAnalytics.totalCancelled) * 100).toFixed(0)}%
                         </span>
                       </div>
                     </div>
@@ -741,6 +749,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Por Dia da Semana */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">

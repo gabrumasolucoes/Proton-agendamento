@@ -132,6 +132,8 @@ export interface ReminderStats {
 // Analytics de no-show (F10)
 export interface NoShowAnalytics {
   totalNoShows: number;
+  /** Faltas detectadas no relatório (confirmed/pending, horário passou + tolerância) ainda não marcadas no banco (Opção A – on-demand) */
+  noShowsDetectedNotMarked?: number;
   totalCancellations: number;
   noShowRate: number;
   patterns?: {

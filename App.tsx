@@ -810,6 +810,11 @@ const App: React.FC = () => {
             onUpdateStatus={mirrorMode.isActive ? undefined : handleUpdateAppointmentStatus}
             onEdit={mirrorMode.isActive ? undefined : handleEditClick}
             doctors={doctors}
+            isDemo={isDemoMode}
+            onMarkNoShow={mirrorMode.isActive ? undefined : (async () => {
+              setSelectedAppointment(null);
+              if (user) await loadData(user.id, isDemoMode);
+            })}
         />
       )}
 

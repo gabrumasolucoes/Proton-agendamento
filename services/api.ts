@@ -275,6 +275,33 @@ export const apiData = {
     }
   },
 
+  /** Marcar agendamento como falta (no-show): status cancelled, no_show_at e cancelled_by system. */
+  async markAsNoShow(id: string, isDemo: boolean): Promise<{ success: boolean; error?: string }> {
+    if (isDemo) return { success: true };
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          status: 'cancelled',
+          no_show_at: now,
+          cancelled_by: 'system',
+          cancellation_reason: 'no_show',
+          cancelled_at: now
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ [markAsNoShow] Erro:', error);
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.error('❌ [markAsNoShow] Erro:', err);
+      return { success: false, error: err.message || 'Erro ao marcar falta' };
+    }
+  },
+
   // -- Patients --
   async getPatients(userId: string, isDemo: boolean): Promise<Patient[]> {
     if (isDemo) return MOCK_PATIENTS;

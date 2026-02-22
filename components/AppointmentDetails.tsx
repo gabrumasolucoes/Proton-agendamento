@@ -1,29 +1,51 @@
 
 import React, { useState } from 'react';
-import { X, Calendar, Clock, User, FileText, Sparkles, MessageCircle, Bot, WifiOff, Play, Edit3, Trash2, CheckCircle, AlertCircle, BrainCircuit, Briefcase, AlertTriangle } from 'lucide-react';
+import { X, Calendar, Clock, User, FileText, Sparkles, MessageCircle, Bot, WifiOff, Play, Edit3, Trash2, CheckCircle, AlertCircle, BrainCircuit, Briefcase, AlertTriangle, UserX } from 'lucide-react';
 import { Appointment, AiAnalysisResult, DoctorProfile } from '../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { analyzeAppointment } from '../services/geminiService';
 import { CancelAppointmentModal } from './CancelAppointmentModal';
+import { apiData } from '../services/api';
 
 interface AppointmentDetailsProps {
   appointment: Appointment | null;
   onClose: () => void;
   onUpdateStatus: (id: string, status: Appointment['status']) => void;
   onEdit: (appointment: Appointment) => void;
-  doctors?: DoctorProfile[]; // Lista de profissionais
+  doctors?: DoctorProfile[];
+  isDemo?: boolean;
+  onMarkNoShow?: () => void;
 }
 
 /** Exibir seção "Inteligência Proton" (botão Gerar Análise). Trocar para true para reativar. */
 const SHOW_PROTON_AI_SECTION = false;
 
-export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, onClose, onUpdateStatus, onEdit, doctors = [] }) => {
+export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, onClose, onUpdateStatus, onEdit, doctors = [], isDemo = false, onMarkNoShow }) => {
   const [analysis, setAnalysis] = useState<AiAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [markingNoShow, setMarkingNoShow] = useState(false);
 
   if (!appointment) return null;
+
+  const isPast = new Date(appointment.end) < new Date();
+  const canMarkNoShow = isPast && (appointment.status === 'confirmed' || appointment.status === 'pending') && !appointment.noShowAt && !isDemo;
+
+  const handleMarkNoShow = async () => {
+    if (!canMarkNoShow || !onMarkNoShow) return;
+    setMarkingNoShow(true);
+    try {
+      const { success, error } = await apiData.markAsNoShow(appointment.id, isDemo);
+      if (success) {
+        onMarkNoShow();
+      } else {
+        console.error('Marcar como falta:', error);
+      }
+    } finally {
+      setMarkingNoShow(false);
+    }
+  };
 
   // Função auxiliar para pegar o nome do profissional
   const getDoctorName = (): string => {
@@ -299,6 +321,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
 
         {/* Footer Actions */}
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center sticky bottom-0 z-10">
+            <div className="flex items-center gap-2">
             {appointment.status !== 'cancelled' && appointment.status !== 'completed' ? (
                  <button 
                     onClick={() => setShowCancelModal(true)}
@@ -307,9 +330,24 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                     <Trash2 className="w-4 h-4 mr-2" />
                     Cancelar
                 </button>
-            ) : (
-                <div />
+            ) : null}
+            {canMarkNoShow && (
+                <button
+                  onClick={handleMarkNoShow}
+                  disabled={markingNoShow}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors disabled:opacity-70"
+                >
+                  {markingNoShow ? (
+                    <span className="flex items-center gap-2"><span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" /> Marcando...</span>
+                  ) : (
+                    <>
+                      <UserX className="w-4 h-4 mr-2" />
+                      Marcar como falta (no-show)
+                    </>
+                  )}
+                </button>
             )}
+            </div>
 
             <div className="flex items-center gap-3">
                 <button 
