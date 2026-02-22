@@ -135,7 +135,16 @@ export interface NoShowAnalytics {
   /** Faltas detectadas no relatório (confirmed/pending, horário passou + tolerância) ainda não marcadas no banco (Opção A – on-demand) */
   noShowsDetectedNotMarked?: number;
   totalCancellations: number;
-  noShowRate: number;
+  /** Total de cancelados no período (no-shows + outros) */
+  totalCancelled: number;
+  cancelledByPatient: number;
+  cancelledByOperator: number;
+  cancelledBySystem?: number;
+  cancelledViaReminder: number;
+  byDayOfWeek: Record<string, { noShows: number; cancellations: number }>;
+  byTimeSlot?: Record<string, { noShows: number; cancellations: number }>;
+  frequentOffenders: Array<{ patientId: string; patientName: string; occurrences: number }>;
+  noShowRate?: number;
   patterns?: {
     highRiskTimeSlots: Array<{ hour: number; noShowRate: number }>;
     highRiskWeekdays: Array<{ weekday: string; noShowRate: number }>;
