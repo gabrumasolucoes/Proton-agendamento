@@ -40,9 +40,11 @@ const { securityHeaders } = require('./middleware/security-headers');
 app.use(securityHeaders);
 
 // Configuração de CORS com lista de origens permitidas
+// Normalizar: sem barra final, para bater com o header Origin do browser (ex.: proton.gabruma.com.br/ vs proton.gabruma.com.br)
+const normalizeOrigin = (url) => (url || '').trim().replace(/\/+$/, '');
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = process.env.PROTON_ALLOWED_ORIGINS 
-    ? process.env.PROTON_ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    ? process.env.PROTON_ALLOWED_ORIGINS.split(',').map(o => normalizeOrigin(o)).filter(Boolean)
     : (isProduction 
         ? [] // Em produção sem config: lista vazia (logar aviso)
         : [
@@ -66,8 +68,9 @@ app.use(cors({
             return callback(null, true);
         }
 
-        // Verificar se origin está na lista permitida
-        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        // Verificar se origin está na lista permitida (comparar normalizado: sem barra final)
+        const originNorm = normalizeOrigin(origin);
+        if (allowedOrigins.includes(originNorm) || allowedOrigins.includes('*')) {
             callback(null, true);
         } else {
             // Em produção sem config, permitir (mas já avisamos acima)
