@@ -133,6 +133,9 @@ async function updateAppointmentStatus(token, action) {
     }
     if (cancelledAt) {
         updateData.cancelled_at = cancelledAt;
+        // Cancelamento pelo link do lembrete = pelo cliente, via lembrete (para relatórios)
+        updateData.cancelled_by = 'patient';
+        updateData.cancelled_via_reminder = true;
     }
 
     const { error: updateError } = await supabase
