@@ -50,11 +50,14 @@ interface ReportsViewProps {
   currentUser?: User | null;
   /** UUID do usuário para analytics (evita usar proton_admin_master no Supabase). Em mirror mode = usuário espelho; admin sem mirror = undefined. */
   reportUserId?: string | null;
+  /** Em modo espelho, usar API admin (bypass RLS) para lembretes e no-show. */
+  isMirrorMode?: boolean;
+  adminToken?: string | null;
 }
 
 type TimeRange = 'week' | 'month' | 'year';
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors, currentUser, reportUserId }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors, currentUser, reportUserId, isMirrorMode = false, adminToken }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | 'all'>('all');
@@ -79,7 +82,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     }
   }, [timeRange, currentDate]);
 
-  // Carregar reminder stats quando período mudar (só com UUID; admin master sem mirror = reportUserId undefined)
+  // Carregar reminder stats quando período mudar (só com UUID; em modo espelho usa API admin para bypass RLS)
   useEffect(() => {
     if (!reportUserId) {
       setReminderStats(null);
@@ -89,8 +92,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     const loadReminderStats = async () => {
       setLoadingStats(true);
       try {
-        const stats = await getReminderStats(reportUserId, dateRange.start, dateRange.end);
-        setReminderStats(stats);
+        if (isMirrorMode && adminToken) {
+          const from = dateRange.start.toISOString();
+          const to = dateRange.end.toISOString();
+          const res = await fetch(`/api/get-reminder-stats?userId=${encodeURIComponent(reportUserId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+            headers: { 'X-Admin-Token': adminToken }
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const stats = await res.json();
+          setReminderStats(stats);
+        } else {
+          const stats = await getReminderStats(reportUserId, dateRange.start, dateRange.end);
+          setReminderStats(stats);
+        }
       } catch (error) {
         console.error('Erro ao carregar reminder stats:', error);
       } finally {
@@ -99,9 +113,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     };
 
     loadReminderStats();
-  }, [reportUserId, dateRange]);
+  }, [reportUserId, dateRange, isMirrorMode, adminToken]);
 
-  // F10 - Carregar no-show analytics quando período mudar (só com UUID)
+  // F10 - Carregar no-show analytics quando período mudar (só com UUID; em modo espelho usa API admin para bypass RLS)
   useEffect(() => {
     if (!reportUserId) {
       setNoShowAnalytics(null);
@@ -111,8 +125,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     const loadNoShowAnalytics = async () => {
       setLoadingNoShow(true);
       try {
-        const analytics = await getNoShowAnalytics(reportUserId, dateRange.start, dateRange.end);
-        setNoShowAnalytics(analytics);
+        if (isMirrorMode && adminToken) {
+          const from = dateRange.start.toISOString();
+          const to = dateRange.end.toISOString();
+          const res = await fetch(`/api/get-no-show-analytics?userId=${encodeURIComponent(reportUserId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+            headers: { 'X-Admin-Token': adminToken }
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const analytics = await res.json();
+          setNoShowAnalytics(analytics);
+        } else {
+          const analytics = await getNoShowAnalytics(reportUserId, dateRange.start, dateRange.end);
+          setNoShowAnalytics(analytics);
+        }
       } catch (error) {
         console.error('Erro ao carregar no-show analytics:', error);
       } finally {
@@ -121,7 +146,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     };
 
     loadNoShowAnalytics();
-  }, [reportUserId, dateRange]);
+  }, [reportUserId, dateRange, isMirrorMode, adminToken]);
 
   // 2. Filter Appointments by Doctor
   const doctorFilteredAppointments = useMemo(() => {

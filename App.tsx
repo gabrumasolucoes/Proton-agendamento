@@ -641,6 +641,8 @@ const App: React.FC = () => {
                     doctors={doctors}
                     currentUser={user}
                     reportUserId={mirrorMode.isActive ? mirrorMode.userId : (user?.id !== 'proton_admin_master' ? user?.id : undefined)}
+                    isMirrorMode={mirrorMode.isActive}
+                    adminToken={user?.adminToken}
                   />
               );
           default:

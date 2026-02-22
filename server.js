@@ -19,6 +19,8 @@ const checkAvailabilityHandler = require('./api/check-availability');
 const authAdminHandler = require('./api/auth-admin');
 const listUsersHandler = require('./api/list-users');
 const getUserDataHandler = require('./api/get-user-data');
+const getReminderStatsHandler = require('./api/get-reminder-stats');
+const getNoShowAnalyticsHandler = require('./api/get-no-show-analytics');
 const resetUserPasswordHandler = require('./api/reset-user-password');
 const deleteUserHandler = require('./api/delete-user');
 const createProtonUserHandler = require('./api/create-proton-user');
@@ -138,6 +140,8 @@ app.post('/api/auth-admin',
 // Rotas de gerenciamento (exigem token admin se REQUIRE_PROTON_ADMIN_AUTH=true)
 app.get('/api/list-users', requireProtonAdmin, listUsersHandler);
 app.get('/api/get-user-data', requireProtonAdmin, getUserDataHandler);
+app.get('/api/get-reminder-stats', requireProtonAdmin, getReminderStatsHandler);
+app.get('/api/get-no-show-analytics', requireProtonAdmin, getNoShowAnalyticsHandler);
 app.post('/api/reset-user-password', requireProtonAdmin, resetUserPasswordHandler);
 app.delete('/api/delete-user', requireProtonAdmin, deleteUserHandler);
 app.post('/api/delete-user', requireProtonAdmin, deleteUserHandler); // Fallback POST
@@ -194,6 +198,8 @@ app.listen(PORT, () => {
     console.log(`   - POST /api/auth-admin (Admin Master)`);
     console.log(`   - GET  /api/list-users (Admin Master)`);
     console.log(`   - GET  /api/get-user-data (Admin Master)`);
+    console.log(`   - GET  /api/get-reminder-stats (Admin Master)`);
+    console.log(`   - GET  /api/get-no-show-analytics (Admin Master)`);
     console.log(`   - POST /api/reset-user-password (Admin Master)`);
     console.log(`   - DELETE/POST /api/delete-user (Admin Master)`);
     console.log(`   - POST /api/create-proton-user (Admin Master)`);
