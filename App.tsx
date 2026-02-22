@@ -834,11 +834,11 @@ const App: React.FC = () => {
         />
       )}
 
-      {isSettingsOpen && (
+          {isSettingsOpen && (
           <SettingsModal 
             onClose={() => {
               setIsSettingsOpen(false);
-              if (user && !isDemoMode && !mirrorMode.isActive) {
+              if (user && user.id !== 'proton_admin_master' && !isDemoMode && !mirrorMode.isActive) {
                 apiAgendaBlocks.getBlocks(user.id).then(setAgendaBlocks);
                 apiBusinessHours.getBusinessHours(user.id).then((rows) =>
                   setClosedWeekdays(rows.filter((r) => !r.active).map((r) => r.day_of_week))

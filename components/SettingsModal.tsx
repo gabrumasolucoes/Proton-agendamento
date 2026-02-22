@@ -96,33 +96,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [currentUser]);
 
   useEffect(() => {
-    if (activeTab === 'agenda' && currentUser?.id) {
-      setBlocksLoading(true);
-      apiAgendaBlocks.getBlocks(currentUser.id).then((b) => { setBlocks(b); setBlocksLoading(false); });
+    if (activeTab !== 'agenda' || !currentUser?.id) return;
+    if (currentUser.id === 'proton_admin_master') {
+      setBlocks([]);
+      setBlocksLoading(false);
+      return;
     }
+    setBlocksLoading(true);
+    apiAgendaBlocks.getBlocks(currentUser.id).then((b) => { setBlocks(b); setBlocksLoading(false); });
   }, [activeTab, currentUser?.id]);
 
   useEffect(() => {
-    if (activeTab === 'horarios' && currentUser?.id) {
-      setBusinessHoursLoading(true);
-      apiBusinessHours.getBusinessHours(currentUser.id).then((rows) => {
-        const byDay: Record<number, BusinessHoursRow> = {};
-        rows.forEach((r) => { byDay[r.day_of_week] = r; });
-        const merged: BusinessHoursRow[] = [];
-        for (let d = 0; d <= 6; d++) {
-          merged.push(byDay[d] ?? {
-            day_of_week: d,
-            start_time: '08:00',
-            end_time: '18:00',
-            lunch_start: d >= 1 && d <= 5 ? '12:00' : null,
-            lunch_end: d >= 1 && d <= 5 ? '13:00' : null,
-            active: d >= 1 && d <= 5
-          });
-        }
-        setBusinessHoursRows(merged);
-        setBusinessHoursLoading(false);
-      });
+    if (activeTab !== 'horarios' || !currentUser?.id) return;
+    if (currentUser.id === 'proton_admin_master') {
+      const defaultRows: BusinessHoursRow[] = [];
+      for (let d = 0; d <= 6; d++) {
+        defaultRows.push({
+          day_of_week: d,
+          start_time: '08:00',
+          end_time: '18:00',
+          lunch_start: d >= 1 && d <= 5 ? '12:00' : null,
+          lunch_end: d >= 1 && d <= 5 ? '13:00' : null,
+          active: d >= 1 && d <= 5
+        });
+      }
+      setBusinessHoursRows(defaultRows);
+      setBusinessHoursLoading(false);
+      return;
     }
+    setBusinessHoursLoading(true);
+    apiBusinessHours.getBusinessHours(currentUser.id).then((rows) => {
+      const byDay: Record<number, BusinessHoursRow> = {};
+      rows.forEach((r) => { byDay[r.day_of_week] = r; });
+      const merged: BusinessHoursRow[] = [];
+      for (let d = 0; d <= 6; d++) {
+        merged.push(byDay[d] ?? {
+          day_of_week: d,
+          start_time: '08:00',
+          end_time: '18:00',
+          lunch_start: d >= 1 && d <= 5 ? '12:00' : null,
+          lunch_end: d >= 1 && d <= 5 ? '13:00' : null,
+          active: d >= 1 && d <= 5
+        });
+      }
+      setBusinessHoursRows(merged);
+      setBusinessHoursLoading(false);
+    });
   }, [activeTab, currentUser?.id]);
 
   const describeBlock = (b: AgendaBlock): string => {

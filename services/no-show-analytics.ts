@@ -22,7 +22,7 @@ export async function getNoShowAnalytics(
       .from('profiles')
       .select('no_show_tolerance_minutes')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     if (profile?.no_show_tolerance_minutes != null) {
       toleranceMinutes = Math.max(0, profile.no_show_tolerance_minutes);
     }
