@@ -472,16 +472,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
         </div>
 
         {/* F7 - Seção de Estatísticas de Lembretes */}
-        {currentUser?.reminderEnabled && (
-          <div className="mt-8 space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <Bell className="w-5 h-5 text-indigo-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800">Estatísticas de Lembretes</h2>
+        <div className="mt-8 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Bell className="w-5 h-5 text-indigo-600" />
             </div>
+            <h2 className="text-2xl font-bold text-gray-800">Estatísticas de Lembretes</h2>
+          </div>
 
-            {loadingStats ? (
+          {!reportUserId ? (
+            <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
+              <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-700 font-medium">Selecione um usuário no modo espelho para ver as estatísticas de lembretes</p>
+              <p className="text-sm text-gray-400 mt-2">
+                No Admin Master, use &quot;Visualizar como&quot; em um usuário e abra Relatórios
+              </p>
+            </div>
+          ) : loadingStats ? (
               <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
                 <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-gray-500">Carregando estatísticas...</p>
@@ -625,8 +632,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                 </p>
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* F10 - Seção de No-Show e Cancelamentos */}
         <div className="mt-8 space-y-6">
@@ -637,12 +643,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
             <h2 className="text-2xl font-bold text-gray-800">Faltas e Cancelamentos</h2>
           </div>
 
-          {loadingNoShow ? (
+          {!reportUserId ? (
+            <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
+              <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-700 font-medium">Selecione um usuário no modo espelho para ver faltas e cancelamentos</p>
+              <p className="text-sm text-gray-400 mt-2">
+                No Admin Master, use &quot;Visualizar como&quot; em um usuário e abra Relatórios
+              </p>
+            </div>
+          ) : loadingNoShow ? (
             <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
               <div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-gray-500">Carregando análise...</p>
             </div>
-          ) : noShowAnalytics && (noShowAnalytics.totalCancelled > 0 || (noShowAnalytics.noShowsDetectedNotMarked ?? 0) > 0) ? (
+          ) : noShowAnalytics && (noShowAnalytics.totalNoShows > 0 || noShowAnalytics.totalCancelled > 0 || (noShowAnalytics.noShowsDetectedNotMarked ?? 0) > 0) ? (
             <>
               {/* Cards de Métricas Principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -834,12 +848,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
                 </div>
               )}
             </>
-          ) : (
+          ) : noShowAnalytics ? (
             <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
               <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
               <p className="text-gray-700 font-medium">Excelente! Nenhuma falta ou cancelamento neste período 🎉</p>
               <p className="text-sm text-gray-400 mt-2">
                 Seu estabelecimento está mantendo uma taxa de comparecimento perfeita
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
+              <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+              <p className="text-gray-700 font-medium">Não foi possível carregar faltas e cancelamentos</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Verifique a conexão e tente novamente
               </p>
             </div>
           )}
