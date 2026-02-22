@@ -22,6 +22,8 @@ interface PatientSummary extends Omit<Patient, 'history'> {
   totalAppointments: number;
   lastAppointment?: Date;
   nextAppointment?: Date;
+  /** Próximo agendamento ativo (não cancelado) para exibir data e status real */
+  nextAppointmentData?: Appointment;
   history: Appointment[];
 }
 
@@ -70,14 +72,19 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
     return patients.map(p => {
         const patientAppointments = appointments.filter(a => a.patientId === p.id);
         patientAppointments.sort((a, b) => b.start.getTime() - a.start.getTime());
-        const futureApts = patientAppointments.filter(a => isFuture(a.start)).sort((a, b) => a.start.getTime() - b.start.getTime());
+        // Próximo retorno: apenas agendamentos futuros e ativos (exclui cancelados)
+        const futureApts = patientAppointments
+          .filter(a => isFuture(a.start) && a.status !== 'cancelled')
+          .sort((a, b) => a.start.getTime() - b.start.getTime());
         const pastApts = patientAppointments.filter(a => isPast(a.start));
 
+        const nextApt = futureApts.length > 0 ? futureApts[0] : undefined;
         return {
             ...p,
             totalAppointments: patientAppointments.length,
             history: patientAppointments,
-            nextAppointment: futureApts.length > 0 ? futureApts[0].start : undefined,
+            nextAppointment: nextApt ? nextApt.start : undefined,
+            nextAppointmentData: nextApt,
             lastAppointment: pastApts.length > 0 ? pastApts[0].start : undefined
         };
     }).sort((a, b) => a.name.localeCompare(b.name));
@@ -361,9 +368,15 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                             <p className={`text-lg font-bold mt-1 ${selectedPatient.nextAppointment ? 'text-emerald-700' : 'text-slate-400'}`}>
                                 {selectedPatient.nextAppointment ? format(selectedPatient.nextAppointment, "d MMM, HH:mm", { locale: ptBR }) : 'Não agendado'}
                             </p>
-                            {selectedPatient.nextAppointment && (
-                                <p className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
-                                    <Clock className="w-3 h-3 mr-1" /> Confirmado
+                            {selectedPatient.nextAppointment && selectedPatient.nextAppointmentData && (
+                                <p className={`text-xs font-medium mt-1 flex items-center ${
+                                  selectedPatient.nextAppointmentData.status === 'confirmed' ? 'text-emerald-600' :
+                                  selectedPatient.nextAppointmentData.status === 'pending' ? 'text-amber-600' : 'text-slate-500'
+                                }`}>
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    {selectedPatient.nextAppointmentData.status === 'confirmed' ? 'Confirmado' :
+                                     selectedPatient.nextAppointmentData.status === 'pending' ? 'Pendente' :
+                                     selectedPatient.nextAppointmentData.status === 'in_progress' ? 'Em atendimento' : 'Agendado'}
                                 </p>
                             )}
                         </div>
