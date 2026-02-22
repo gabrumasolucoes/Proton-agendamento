@@ -100,7 +100,23 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                 )}
                 {appointment.status === 'cancelled' && (
                     <span className="flex items-center text-[11px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
-                        <X className="w-3.5 h-3.5 mr-1" /> Cancelado pelo cliente{appointment.cancelledAt ? ` em ${format(new Date(appointment.cancelledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}
+                        {appointment.noShowAt ? (
+                          <>
+                            <UserX className="w-3.5 h-3.5 mr-1" /> Marcado como falta (no-show) em {format(new Date(appointment.noShowAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          </>
+                        ) : appointment.cancelledBy === 'patient' ? (
+                          <>
+                            <X className="w-3.5 h-3.5 mr-1" /> Cancelado pelo cliente{appointment.cancelledAt ? ` em ${format(new Date(appointment.cancelledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}
+                          </>
+                        ) : appointment.cancelledBy === 'operator' ? (
+                          <>
+                            <X className="w-3.5 h-3.5 mr-1" /> Cancelado pelo operador{appointment.cancelledAt ? ` em ${format(new Date(appointment.cancelledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3.5 h-3.5 mr-1" /> Cancelado pelo sistema{appointment.cancelledAt ? ` em ${format(new Date(appointment.cancelledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}
+                          </>
+                        )}
                     </span>
                 )}
                 {appointment.source === 'chatbot' && (

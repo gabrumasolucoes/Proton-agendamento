@@ -499,7 +499,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                                                         apt.status === 'cancelled' ? 'text-rose-600' : 'text-slate-500'
                                                     }`}>
                                                         {apt.status === 'cancelled' ? <AlertCircle className="w-3 h-3 mr-1" /> : <div className="w-1.5 h-1.5 rounded-full bg-current mr-1.5"></div>}
-                                                        {apt.status}
+                                                        {apt.status === 'confirmed' ? 'Confirmado' : apt.status === 'pending' ? 'Pendente' : apt.status === 'cancelled' ? 'Cancelado' : apt.status === 'in_progress' ? 'Em atendimento' : apt.status === 'completed' ? 'Concluído' : apt.status}
                                                     </span>
                                                 </div>
                                             </div>

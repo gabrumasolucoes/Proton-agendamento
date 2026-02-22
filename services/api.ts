@@ -134,6 +134,11 @@ export const apiData = {
       end: new Date(apt.end_time),
       confirmedAt: apt.confirmed_at || null,
       cancelledAt: apt.cancelled_at || null,
+      cancellationReason: apt.cancellation_reason ?? null,
+      cancelledBy: apt.cancelled_by ?? null,
+      noShowAt: apt.no_show_at ?? null,
+      cancelledViaReminder: apt.cancelled_via_reminder ?? false,
+      rescheduledNotes: apt.rescheduled_notes ?? null,
     }));
   },
 
