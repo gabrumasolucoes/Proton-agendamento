@@ -48,11 +48,13 @@ interface ReportsViewProps {
   appointments: Appointment[];
   doctors: DoctorProfile[];
   currentUser?: User | null;
+  /** UUID do usuário para analytics (evita usar proton_admin_master no Supabase). Em mirror mode = usuário espelho; admin sem mirror = undefined. */
+  reportUserId?: string | null;
 }
 
 type TimeRange = 'week' | 'month' | 'year';
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors, currentUser }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors, currentUser, reportUserId }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | 'all'>('all');
@@ -77,14 +79,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     }
   }, [timeRange, currentDate]);
 
-  // Carregar reminder stats quando período mudar
+  // Carregar reminder stats quando período mudar (só com UUID; admin master sem mirror = reportUserId undefined)
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!reportUserId) {
+      setReminderStats(null);
+      return;
+    }
     
     const loadReminderStats = async () => {
       setLoadingStats(true);
       try {
-        const stats = await getReminderStats(currentUser.id, dateRange.start, dateRange.end);
+        const stats = await getReminderStats(reportUserId, dateRange.start, dateRange.end);
         setReminderStats(stats);
       } catch (error) {
         console.error('Erro ao carregar reminder stats:', error);
@@ -94,16 +99,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     };
 
     loadReminderStats();
-  }, [currentUser?.id, dateRange]);
+  }, [reportUserId, dateRange]);
 
-  // F10 - Carregar no-show analytics quando período mudar
+  // F10 - Carregar no-show analytics quando período mudar (só com UUID)
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!reportUserId) {
+      setNoShowAnalytics(null);
+      return;
+    }
     
     const loadNoShowAnalytics = async () => {
       setLoadingNoShow(true);
       try {
-        const analytics = await getNoShowAnalytics(currentUser.id, dateRange.start, dateRange.end);
+        const analytics = await getNoShowAnalytics(reportUserId, dateRange.start, dateRange.end);
         setNoShowAnalytics(analytics);
       } catch (error) {
         console.error('Erro ao carregar no-show analytics:', error);
@@ -113,7 +121,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ appointments, doctors,
     };
 
     loadNoShowAnalytics();
-  }, [currentUser?.id, dateRange]);
+  }, [reportUserId, dateRange]);
 
   // 2. Filter Appointments by Doctor
   const doctorFilteredAppointments = useMemo(() => {

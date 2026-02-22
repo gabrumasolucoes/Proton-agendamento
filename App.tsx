@@ -119,9 +119,8 @@ const App: React.FC = () => {
   const loadData = async (userId: string, isDemo: boolean) => {
       setLoading(true);
       try {
-          // Se for admin master SEM mirror mode, não carregar dados
-          if (user?.isAdmin && userId === 'proton_admin_master' && !mirrorMode.isActive) {
-              // Admin master não carrega dados normais, apenas verá gerenciamento
+          // Admin master SEM mirror mode: não chamar Supabase (user_id é UUID, proton_admin_master não é)
+          if (userId === 'proton_admin_master' && !mirrorMode.isActive) {
               setAppointments([]);
               setPatients([]);
               setDoctors([]);
@@ -635,6 +634,7 @@ const App: React.FC = () => {
                     appointments={filteredAppointments}
                     doctors={doctors}
                     currentUser={user}
+                    reportUserId={mirrorMode.isActive ? mirrorMode.userId : (user?.id !== 'proton_admin_master' ? user?.id : undefined)}
                   />
               );
           default:
