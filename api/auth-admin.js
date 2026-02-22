@@ -64,14 +64,15 @@ async function authAdminHandler(req, res) {
         }
 
         // Verificar senha usando bcrypt (mesmo hash do SDR)
-        const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
-        const adminPasswordPlain = process.env.ADMIN_PASSWORD; // Fallback
+        // Trim para evitar 500 quando o hash foi colado com espaço/newline no Railway
+        const adminPasswordHash = (process.env.ADMIN_PASSWORD_HASH || '').trim();
+        const adminPasswordPlain = (process.env.ADMIN_PASSWORD || '').trim();
         const isProduction = process.env.NODE_ENV === 'production';
 
         let isPasswordValid = false;
 
         // Prioridade 1: Se ADMIN_PASSWORD_HASH estiver configurado, usar bcrypt
-        if (adminPasswordHash && adminPasswordHash.trim() !== '') {
+        if (adminPasswordHash !== '') {
             try {
                 isPasswordValid = await bcrypt.compare(password, adminPasswordHash);
                 if (!isPasswordValid) {
@@ -83,7 +84,7 @@ async function authAdminHandler(req, res) {
             }
         }
         // Prioridade 2: Fallback para texto plano (apenas em desenvolvimento)
-        else if (adminPasswordPlain && adminPasswordPlain.trim() !== '') {
+        else if (adminPasswordPlain !== '') {
             // S7: Em produção, NEGAR uso de texto plano
             if (isProduction) {
                 console.error('❌ [Proton Auth Admin] ADMIN_PASSWORD em texto plano não é permitido em produção.');
@@ -182,9 +183,10 @@ async function authAdminHandler(req, res) {
         });
 
     } catch (error) {
-        console.error('❌ [Proton Auth Admin] Erro:', error);
+        console.error('❌ [Proton Auth Admin] Erro:', error?.message || error);
+        if (error?.stack) console.error(error.stack);
         return res.status(500).json({ 
-            error: error.message || 'Erro interno do servidor'
+            error: 'Erro ao processar login. Verifique os logs do servidor (Railway) ou a configuração de ADMIN_PASSWORD_HASH.'
         });
     }
 }
