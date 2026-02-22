@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       question: "O que tem na aba Relatórios?",
-      answer: "Na aba 'Relatórios' você encontra: desempenho (total de atendimentos, média diária, taxa de cancelamento), gráfico de procedimentos mais realizados, volume de atendimentos, Estatísticas de Lembretes (envios, confirmações, cancelamentos via lembrete) e Faltas e Cancelamentos (total de faltas, cancelamentos, reincidentes e origem dos cancelamentos). No Admin Master, use 'Visualizar como' um usuário para ver os relatórios da empresa espelhada."
+      answer: "Na aba 'Relatórios' você encontra: desempenho (total de atendimentos, média diária, taxa de cancelamento), gráfico de procedimentos mais realizados, volume de atendimentos, Estatísticas de Lembretes (envios, confirmações, cancelamentos via lembrete) e Faltas e Cancelamentos (total de faltas, cancelamentos, reincidentes e origem dos cancelamentos)."
     },
     {
       question: "Como configurar profissionais, agenda e horário de atendimento?",
@@ -88,10 +88,6 @@ export const Header: React.FC<HeaderProps> = ({
     {
       question: "Como atualizar minhas informações pessoais e da empresa?",
       answer: "Em Configurações, aba 'Conta', você atualiza seu nome completo e o nome da empresa. O e-mail não pode ser alterado. As alterações são salvas ao clicar em 'Salvar Alterações'."
-    },
-    {
-      question: "O que é o Modo espelho (Admin Master)?",
-      answer: "No Admin Master, 'Visualizar como' abre o modo espelho: você vê a interface como um usuário específico (agenda, clientes, relatórios e configurações da empresa dele), em apenas visualização. É possível abrir os agendamentos no calendário para conferir detalhes; não é possível editar, cancelar ou criar. Todas as abas de Configurações mostram os dados da empresa espelhada."
     },
     {
       question: "Como filtrar agendamentos por profissional?",
