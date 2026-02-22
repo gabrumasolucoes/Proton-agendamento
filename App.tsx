@@ -55,6 +55,12 @@ const App: React.FC = () => {
     userName: null,
     userEmail: null
   });
+  /** Dados da empresa espelhada para o modal de configurações (só preenchido em mirror mode ao abrir configurações) */
+  const [mirrorSettingsData, setMirrorSettingsData] = useState<{
+    user: User | null;
+    agenda_blocks: AgendaBlock[];
+    business_hours: { id?: string; day_of_week: number; start_time: string; end_time: string; lunch_start: string | null; lunch_end: string | null; active: boolean }[];
+  } | null>(null);
   
   // State for tags
   const [tags, setTags] = useState<ProcedureTag[]>(DEFAULT_TAGS);
@@ -705,6 +711,30 @@ const App: React.FC = () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mirrorMode.isActive, mirrorMode.userId, user?.id]);
 
+  // Carregar dados da empresa espelhada para o modal de configurações (modo espelho = ver todas as configs da empresa)
+  useEffect(() => {
+      if (!isSettingsOpen || !mirrorMode.isActive || !mirrorMode.userId || !user?.adminToken) {
+          setMirrorSettingsData(null);
+          return;
+      }
+      const headers: Record<string, string> = {};
+      headers['X-Admin-Token'] = user.adminToken;
+      fetch(`/api/get-user-data?userId=${mirrorMode.userId}`, { headers })
+          .then((r) => r.json())
+          .then((data) => {
+              if (data.success && data.user) {
+                  setMirrorSettingsData({
+                      user: data.user,
+                      agenda_blocks: data.agenda_blocks || [],
+                      business_hours: data.business_hours || []
+                  });
+              } else {
+                  setMirrorSettingsData(null);
+              }
+          })
+          .catch(() => setMirrorSettingsData(null));
+  }, [isSettingsOpen, mirrorMode.isActive, mirrorMode.userId, user?.adminToken]);
+
   if (loading) {
       return (
           <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -838,6 +868,7 @@ const App: React.FC = () => {
           <SettingsModal 
             onClose={() => {
               setIsSettingsOpen(false);
+              setMirrorSettingsData(null);
               if (user && user.id !== 'proton_admin_master' && !isDemoMode && !mirrorMode.isActive) {
                 apiAgendaBlocks.getBlocks(user.id).then(setAgendaBlocks);
                 apiBusinessHours.getBusinessHours(user.id).then((rows) =>
@@ -854,6 +885,10 @@ const App: React.FC = () => {
             onUserUpdate={(updatedUser) => {
               setUser(updatedUser);
             }}
+            isMirrorMode={mirrorMode.isActive}
+            mirrorUser={mirrorSettingsData?.user ?? null}
+            mirrorAgendaBlocks={mirrorSettingsData?.agenda_blocks ?? []}
+            mirrorBusinessHours={mirrorSettingsData?.business_hours ?? []}
           />
       )}
 

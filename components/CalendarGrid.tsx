@@ -193,12 +193,10 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                           <button
                                               key={apt.id}
                                               onClick={(e) => { 
-                                                  if (!isReadOnly) {
-                                                      e.stopPropagation(); 
-                                                      onSelectAppointment(apt);
-                                                  }
+                                                  e.stopPropagation(); 
+                                                  onSelectAppointment(apt);
                                               }}
-                                              className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate flex items-center gap-1 transition-all ${cardClasses} ${matches ? 'opacity-100' : 'opacity-20'} ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
+                                              className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate flex items-center gap-1 transition-all ${cardClasses} ${matches ? 'opacity-100' : 'opacity-20'} cursor-pointer`}
                                           >
                                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${borderAccent.replace('bg-', 'bg-')}`}></div>
                                               <span className={`font-medium truncate flex-1 min-w-0 ${textClasses}`}>
@@ -353,15 +351,10 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                             return (
                                                 <button
                                                     key={apt.id}
-                                                    onClick={() => {
-                                                        if (!isReadOnly) {
-                                                            onSelectAppointment(apt);
-                                                        }
-                                                    }}
-                                                    disabled={isReadOnly}
+                                                    onClick={() => onSelectAppointment(apt)}
                                                     // @ts-ignore
                                                     style={positionStyle}
-                                                    className={`absolute rounded-xl text-left overflow-hidden transition-all duration-300 ${isReadOnly ? 'cursor-default' : 'hover:shadow-lg hover:-translate-y-1 hover:z-30 cursor-pointer'} group ${cardClasses} ${opacityClass}`}
+                                                    className={`absolute rounded-xl text-left overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:z-30 cursor-pointer group ${cardClasses} ${opacityClass}`}
                                                 >
                                                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${borderAccent}`}></div>
                                                     <div className="pl-3 pr-2 py-2 h-full flex flex-col min-w-0">

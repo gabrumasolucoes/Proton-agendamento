@@ -13,6 +13,11 @@ interface SettingsModalProps {
   onToggleDoctor: (id: string) => void;
   currentUser: User | null;
   onUserUpdate?: (user: User) => void;
+  /** Modo espelho: exibir apenas dados da empresa espelhada (somente leitura) */
+  isMirrorMode?: boolean;
+  mirrorUser?: User | null;
+  mirrorAgendaBlocks?: AgendaBlock[];
+  mirrorBusinessHours?: { id?: string; day_of_week: number; start_time: string; end_time: string; lunch_start: string | null; lunch_end: string | null; active: boolean }[];
 }
 
 const PRESET_COLORS = [
@@ -31,8 +36,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateDoctor,
   onToggleDoctor,
   currentUser,
-  onUserUpdate
+  onUserUpdate,
+  isMirrorMode = false,
+  mirrorUser = null,
+  mirrorAgendaBlocks = [],
+  mirrorBusinessHours = []
 }) => {
+  const displayUser = isMirrorMode && mirrorUser ? mirrorUser : currentUser;
+
   const [activeTab, setActiveTab] = useState<'doctors' | 'account' | 'agenda' | 'horarios' | 'reminders'>('doctors');
   const [newDocName, setNewDocName] = useState('');
   const [newDocRole, setNewDocRole] = useState('');
@@ -44,8 +55,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [editSpecialty, setEditSpecialty] = useState('');
 
   // Account settings state
-  const [userName, setUserName] = useState(currentUser?.name || '');
-  const [userClinic, setUserClinic] = useState(currentUser?.clinicName || '');
+  const [userName, setUserName] = useState(displayUser?.name || '');
+  const [userClinic, setUserClinic] = useState(displayUser?.clinicName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -80,23 +91,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [businessHoursMessage, setBusinessHoursMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
-    if (currentUser) {
-      setUserName(currentUser.name || '');
-      setUserClinic(currentUser.clinicName || '');
-      // Sincronizar reminder settings (F3)
-      setReminderEnabled(currentUser.reminderEnabled ?? true);
-      setReminderDaysBefore(currentUser.reminderDaysBefore ?? 1);
-      setReminderSendTime(currentUser.reminderSendTime ?? '08:00');
-      setReminderTimezone(currentUser.reminderTimezone ?? 'America/Sao_Paulo');
-      setMaxRemindersPerDay(currentUser.maxRemindersPerDay ?? 50);
-      setNoShowToleranceMinutes(currentUser.noShowToleranceMinutes ?? 30);
-      setReminderMessageTemplate(currentUser.reminderMessageTemplate ?? '');
-      setReminderAddress(currentUser.reminderAddress ?? '');
+    if (displayUser) {
+      setUserName(displayUser.name || '');
+      setUserClinic(displayUser.clinicName || '');
+      setReminderEnabled(displayUser.reminderEnabled ?? true);
+      setReminderDaysBefore(displayUser.reminderDaysBefore ?? 1);
+      setReminderSendTime(displayUser.reminderSendTime ?? '08:00');
+      setReminderTimezone(displayUser.reminderTimezone ?? 'America/Sao_Paulo');
+      setMaxRemindersPerDay(displayUser.maxRemindersPerDay ?? 50);
+      setNoShowToleranceMinutes(displayUser.noShowToleranceMinutes ?? 30);
+      setReminderMessageTemplate(displayUser.reminderMessageTemplate ?? '');
+      setReminderAddress(displayUser.reminderAddress ?? '');
     }
-  }, [currentUser]);
+  }, [displayUser]);
 
   useEffect(() => {
-    if (activeTab !== 'agenda' || !currentUser?.id) return;
+    if (activeTab !== 'agenda') return;
+    if (isMirrorMode) {
+      setBlocks(mirrorAgendaBlocks);
+      setBlocksLoading(false);
+      return;
+    }
+    if (!currentUser?.id) return;
     if (currentUser.id === 'proton_admin_master') {
       setBlocks([]);
       setBlocksLoading(false);
@@ -104,10 +120,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
     setBlocksLoading(true);
     apiAgendaBlocks.getBlocks(currentUser.id).then((b) => { setBlocks(b); setBlocksLoading(false); });
-  }, [activeTab, currentUser?.id]);
+  }, [activeTab, currentUser?.id, isMirrorMode, mirrorAgendaBlocks]);
 
   useEffect(() => {
-    if (activeTab !== 'horarios' || !currentUser?.id) return;
+    if (activeTab !== 'horarios') return;
+    if (isMirrorMode) {
+      const byDay: Record<number, BusinessHoursRow> = {};
+      mirrorBusinessHours.forEach((r) => { byDay[r.day_of_week] = r as BusinessHoursRow; });
+      const merged: BusinessHoursRow[] = [];
+      for (let d = 0; d <= 6; d++) {
+        merged.push(byDay[d] ?? {
+          day_of_week: d,
+          start_time: '08:00',
+          end_time: '18:00',
+          lunch_start: d >= 1 && d <= 5 ? '12:00' : null,
+          lunch_end: d >= 1 && d <= 5 ? '13:00' : null,
+          active: d >= 1 && d <= 5
+        });
+      }
+      setBusinessHoursRows(merged);
+      setBusinessHoursLoading(false);
+      return;
+    }
+    if (!currentUser?.id) return;
     if (currentUser.id === 'proton_admin_master') {
       const defaultRows: BusinessHoursRow[] = [];
       for (let d = 0; d <= 6; d++) {
@@ -142,7 +177,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setBusinessHoursRows(merged);
       setBusinessHoursLoading(false);
     });
-  }, [activeTab, currentUser?.id]);
+  }, [activeTab, currentUser?.id, isMirrorMode, mirrorBusinessHours]);
 
   const describeBlock = (b: AgendaBlock): string => {
     let desc = '';
@@ -174,7 +209,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const hasWeekendBlock = (): boolean => blocks.some((b) => b.block_type === 'weekdays' && Array.isArray(b.weekdays) && b.weekdays.includes(0) && b.weekdays.includes(6));
 
   const handleBlockWeekend = async () => {
-    if (!currentUser?.id || hasWeekendBlock()) return;
+    if (isMirrorMode || !currentUser?.id || hasWeekendBlock()) return;
     const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
     const created = await apiAgendaBlocks.insert(currentUser.id, { 
       block_type: 'weekdays', 
@@ -187,7 +222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleAddSpecific = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id || !specificDate) return;
+    if (isMirrorMode || !currentUser?.id || !specificDate) return;
     const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
     const created = await apiAgendaBlocks.insert(currentUser.id, { 
       block_type: 'specific_date', 
@@ -200,7 +235,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleAddRange = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id || !rangeStart || !rangeEnd) return;
+    if (isMirrorMode || !currentUser?.id || !rangeStart || !rangeEnd) return;
     const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
     const created = await apiAgendaBlocks.insert(currentUser.id, { 
       block_type: 'date_range', 
@@ -214,7 +249,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleAddWeekday = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id) return;
+    if (isMirrorMode || !currentUser?.id) return;
     const doctorId = selectedDoctorFilter === 'all' ? null : selectedDoctorFilter;
     const created = await apiAgendaBlocks.insert(currentUser.id, { 
       block_type: 'weekdays', 
@@ -226,7 +261,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleToggleBlock = async (id: string, active: boolean) => {
-    if (!currentUser?.id) return;
+    if (isMirrorMode || !currentUser?.id) return;
     const ok = await apiAgendaBlocks.update(id, { active }, currentUser.id);
     if (ok) {
       setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, active } : b)));
@@ -236,7 +271,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleDeleteBlock = async (id: string) => {
     if (!window.confirm('Remover este bloqueio?')) return;
-    if (!currentUser?.id) return;
+    if (isMirrorMode || !currentUser?.id) return;
     const ok = await apiAgendaBlocks.delete(id, currentUser.id);
     if (ok) {
       setBlocks((prev) => prev.filter((b) => b.id !== id));
@@ -246,6 +281,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isMirrorMode) return;
     if (newDocName && newDocRole) {
       onAddDoctor({
         name: newDocName,
@@ -265,7 +301,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleSaveEdit = () => {
-    if (!editingDoctorId || !editName || !editSpecialty) return;
+    if (isMirrorMode || !editingDoctorId || !editName || !editSpecialty) return;
     
     const doctor = doctors.find(d => d.id === editingDoctorId);
     if (doctor) {
@@ -289,7 +325,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (isMirrorMode || !currentUser) return;
 
     setIsSaving(true);
     setSaveMessage(null);
@@ -329,7 +365,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // F3 - Handler para salvar configurações de lembretes
   const handleSaveReminderSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (isMirrorMode || !currentUser) return;
 
     setIsSavingReminders(true);
     setReminderSaveMessage(null);
@@ -382,7 +418,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSaveBusinessHours = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.id) return;
+    if (isMirrorMode || !currentUser?.id) return;
     setBusinessHoursMessage(null);
     setBusinessHoursSaving(true);
     try {
@@ -418,6 +454,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
              <X className="w-5 h-5 text-slate-500" />
            </button>
         </div>
+        {isMirrorMode && (
+          <div className="px-6 py-2 bg-indigo-50 border-b border-indigo-100 text-sm text-indigo-800">
+            Modo espelho — apenas visualização. Dados da empresa espelhada.
+          </div>
+        )}
 
         <div className="flex flex-1 overflow-hidden min-h-0">
             {/* Sidebar Tabs - rolável para garantir que "Horário de atendimento" apareça */}
@@ -624,7 +665,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </label>
                                     <input 
                                         type="email" 
-                                        value={currentUser?.email || ''}
+                                        value={displayUser?.email || ''}
                                         disabled
                                         className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
                                     />
@@ -639,9 +680,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <input 
                                         type="text" 
                                         value={userName}
-                                        onChange={(e) => setUserName(e.target.value)}
+                                        onChange={(e) => !isMirrorMode && setUserName(e.target.value)}
                                         placeholder="Seu nome completo"
-                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        readOnly={isMirrorMode}
+                                        className={`w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isMirrorMode ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                                         required
                                     />
                                 </div>
@@ -655,9 +697,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <input 
                                         type="text" 
                                         value={userClinic}
-                                        onChange={(e) => setUserClinic(e.target.value)}
+                                        onChange={(e) => !isMirrorMode && setUserClinic(e.target.value)}
                                         placeholder="Nome da sua empresa"
-                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        readOnly={isMirrorMode}
+                                        className={`w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isMirrorMode ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                                         required
                                     />
                                 </div>
@@ -677,7 +720,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <div className="flex justify-end pt-2 border-t border-slate-100">
                                     <button 
                                         type="submit"
-                                        disabled={isSaving || !userName.trim() || !userClinic.trim()}
+                                        disabled={isMirrorMode || isSaving || !userName.trim() || !userClinic.trim()}
                                         className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
                                     >
                                         <Save className="w-4 h-4" />
@@ -880,7 +923,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <div className="pt-2 flex items-center gap-3">
                                         <button
                                             type="submit"
-                                            disabled={businessHoursSaving}
+                                            disabled={isMirrorMode || businessHoursSaving}
                                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
                                         >
                                             <Save className="w-4 h-4" />
@@ -1099,7 +1142,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <div className="pt-4 border-t border-slate-200">
                                     <button
                                         type="submit"
-                                        disabled={isSavingReminders}
+                                        disabled={isMirrorMode || isSavingReminders}
                                         className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
                                         <Save className="w-4 h-4" />

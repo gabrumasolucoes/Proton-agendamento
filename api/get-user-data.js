@@ -58,25 +58,49 @@ async function getUserDataHandler(req, res) {
             console.error('❌ [Get User Data] Erro ao buscar doutores:', doctorsError);
         }
 
-        // Buscar perfil do usuário
+        // Buscar perfil do usuário (completo para configurações no modo espelho)
         const { data: profileData } = await supabaseAdmin
             .from('profiles')
             .select('*')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
+
+        // Buscar agenda_blocks e business_hours para configurações no modo espelho
+        const { data: agendaBlocksData } = await supabaseAdmin
+            .from('agenda_blocks')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        const { data: businessHoursData } = await supabaseAdmin
+            .from('business_hours')
+            .select('*')
+            .eq('user_id', userId)
+            .order('day_of_week', { ascending: true });
+
+        const userForFront = profileData ? {
+            id: profileData.id,
+            email: profileData.email,
+            name: profileData.name,
+            clinicName: profileData.clinic_name,
+            createdAt: profileData.created_at,
+            reminderEnabled: profileData.reminder_enabled ?? true,
+            reminderDaysBefore: profileData.reminder_days_before ?? 1,
+            reminderSendTime: profileData.reminder_send_time ?? '08:00',
+            reminderTimezone: profileData.reminder_timezone ?? 'America/Sao_Paulo',
+            maxRemindersPerDay: profileData.max_reminders_per_day ?? 50,
+            noShowToleranceMinutes: profileData.no_show_tolerance_minutes ?? 30,
+            reminderMessageTemplate: profileData.reminder_message_template ?? null,
+            reminderAddress: profileData.reminder_address ?? null
+        } : null;
 
         return res.status(200).json({
             success: true,
-            user: profileData ? {
-                id: profileData.id,
-                email: profileData.email,
-                name: profileData.name,
-                clinicName: profileData.clinic_name,
-                createdAt: profileData.created_at
-            } : null,
+            user: userForFront,
             appointments: appointmentsData || [],
             patients: patientsData || [],
             doctors: doctorsData || [],
+            agenda_blocks: agendaBlocksData || [],
+            business_hours: businessHoursData || [],
             stats: {
                 totalAppointments: appointmentsData?.length || 0,
                 totalPatients: patientsData?.length || 0,
