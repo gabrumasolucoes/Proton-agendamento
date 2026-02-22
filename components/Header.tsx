@@ -46,50 +46,68 @@ export const Header: React.FC<HeaderProps> = ({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Dúvidas Frequentes
+  const shortcuts = [
+    { keys: "N", description: "Abrir novo agendamento" },
+    { keys: "/", description: "Focar na barra de busca" },
+  ];
+
+  // Dúvidas Frequentes (atualizado com funcionalidades atuais do Proton)
   const faqs = [
     {
       question: "Como criar um novo agendamento?",
-      answer: "Clique no botão 'Novo Agendamento' na barra lateral esquerda ou pressione a tecla 'N' no teclado. Preencha as informações do paciente, data, horário e procedimento desejado."
+      answer: "Clique no botão 'Novo Agendamento' na barra lateral esquerda ou pressione a tecla 'N' no teclado. Preencha paciente, data, horário, procedimento e profissional. Você pode vincular tags de procedimento ao agendamento."
     },
     {
-      question: "Como buscar um agendamento específico?",
-      answer: "Use a barra de busca no topo da tela para buscar por nome do paciente, procedimento ou qualquer termo relacionado. Você também pode pressionar '/' para focar na busca."
+      question: "Como buscar um agendamento ou cliente?",
+      answer: "Use a barra de busca no topo da tela (ou pressione '/') para buscar por nome do paciente, procedimento ou qualquer termo. A busca filtra a agenda e, na aba Clientes, nome, e-mail ou telefone."
     },
     {
       question: "Como alterar a visualização da agenda?",
-      answer: "Use os botões 'Dia', 'Semana' e 'Mês' no topo da tela para alternar entre diferentes visualizações do calendário."
+      answer: "Use os botões 'Dia', 'Semana' e 'Mês' no topo da tela para alternar entre as visualizações. Use as setas ou 'Hoje' / 'Esta Semana' / 'Este Mês' para navegar nas datas."
     },
     {
       question: "Como gerenciar meus clientes?",
-      answer: "Acesse a aba 'Clientes' no menu lateral para visualizar todos os clientes cadastrados, adicionar novos, editar informações ou criar agendamentos para clientes existentes."
+      answer: "Acesse a aba 'Clientes' no menu lateral. Você pode adicionar novos clientes, editar dados, ver o histórico de agendamentos e o próximo retorno (apenas futuros não cancelados). Também é possível criar agendamento direto para um cliente."
     },
     {
-      question: "Como visualizar relatórios e estatísticas?",
-      answer: "Clique na aba 'Relatórios' no menu lateral para acessar métricas de performance, total de atendimentos, média diária e taxa de cancelamento."
+      question: "O que tem na aba Relatórios?",
+      answer: "Na aba 'Relatórios' você encontra: desempenho (total de atendimentos, média diária, taxa de cancelamento), gráfico de procedimentos mais realizados, volume de atendimentos, Estatísticas de Lembretes (envios, confirmações, cancelamentos via lembrete) e Faltas e Cancelamentos (total de faltas, cancelamentos, reincidentes e origem dos cancelamentos). No Admin Master, use 'Visualizar como' um usuário para ver os relatórios da empresa espelhada."
     },
     {
-      question: "Como adicionar ou remover profissionais?",
-      answer: "Acesse 'Configurações' no menu lateral e vá para a aba 'Profissionais'. Lá você pode adicionar novos profissionais com suas especialidades e cores de identificação."
+      question: "Como configurar profissionais, agenda e horário de atendimento?",
+      answer: "Acesse 'Configurações' (ícone de engrenagem) no menu lateral. Em 'Profissionais' você adiciona, edita ou remove profissionais e define cor e especialidade. Em 'Agenda' você bloqueia dias (fins de semana, feriados, períodos ou um dia da semana). Em 'Horário de atendimento' define início e fim do expediente por dia da semana; dias inativos não oferecem horários na API/chatbot."
     },
     {
-      question: "Como atualizar minhas informações pessoais?",
-      answer: "Acesse 'Configurações' no menu lateral e vá para a aba 'Conta'. Você pode atualizar seu nome e o nome da empresa. O email não pode ser alterado."
+      question: "Como configurar lembretes por WhatsApp?",
+      answer: "Em Configurações, aba 'Lembretes', você ativa o envio de lembretes de confirmação, define quantos dias antes enviar, horário do envio e fuso horário. Pode personalizar a mensagem e o endereço exibido. Os pacientes recebem o link de confirmação ou cancelamento pelo WhatsApp."
     },
     {
-      question: "O que significa 'Modo espelho' para admin?",
-      answer: "O modo espelho permite que administradores visualizem a interface exatamente como um usuário específico a vê, incluindo agenda, pacientes e relatórios, sem poder fazer alterações."
+      question: "Como atualizar minhas informações pessoais e da empresa?",
+      answer: "Em Configurações, aba 'Conta', você atualiza seu nome completo e o nome da empresa. O e-mail não pode ser alterado. As alterações são salvas ao clicar em 'Salvar Alterações'."
+    },
+    {
+      question: "O que é o Modo espelho (Admin Master)?",
+      answer: "No Admin Master, 'Visualizar como' abre o modo espelho: você vê a interface como um usuário específico (agenda, clientes, relatórios e configurações da empresa dele), em apenas visualização. É possível abrir os agendamentos no calendário para conferir detalhes; não é possível editar, cancelar ou criar. Todas as abas de Configurações mostram os dados da empresa espelhada."
     },
     {
       question: "Como filtrar agendamentos por profissional?",
-      answer: "Na barra lateral, você pode ativar ou desativar a visualização de cada profissional usando as caixas de seleção. Isso filtra os agendamentos exibidos na agenda."
+      answer: "Na barra lateral, em 'Profissionais', use as caixas de seleção para ativar ou desativar cada profissional. A agenda exibe apenas os agendamentos dos profissionais marcados."
+    },
+    {
+      question: "Como marcar um agendamento como falta (no-show)?",
+      answer: "Abra o agendamento clicando nele na agenda. No detalhe, use o botão 'Marcar como falta' para registrar que o paciente não compareceu. Isso alimenta os relatórios de Faltas e Cancelamentos e a lista de reincidentes."
+    },
+    {
+      question: "Os pacientes podem confirmar ou cancelar pelo link?",
+      answer: "Sim. Nos lembretes enviados por WhatsApp, o paciente recebe um link. Ao clicar, pode confirmar ou cancelar o agendamento. O cancelamento pelo link é registrado como 'pelo cliente' e via lembrete, e aparece nos relatórios de origem dos cancelamentos."
     },
     {
       question: "Os dados são salvos automaticamente?",
-      answer: "Sim, todas as alterações (agendamentos, pacientes, configurações) são salvas automaticamente quando você confirma a ação. Não é necessário salvar manualmente."
+      answer: "As alterações são aplicadas ao confirmar cada ação (salvar, criar, editar). Agendamentos, pacientes e configurações não precisam de um botão 'Salvar' global; cada modal ou formulário tem sua própria confirmação."
     }
   ];
 
@@ -340,7 +358,7 @@ export const Header: React.FC<HeaderProps> = ({
                         </button>
 
                         <button 
-                            onClick={() => alert("Atalhos:\nN - Novo Agendamento\n/ - Buscar")}
+                            onClick={() => { setIsHelpOpen(false); setIsShortcutsOpen(true); }}
                             className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors group text-left"
                         >
                             <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -355,7 +373,35 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     
                     <div className="bg-slate-50 p-4 text-center border-t border-slate-100">
-                        <p className="text-[10px] text-slate-400 font-medium">Proton v1.0.2 • Build 2024</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Proton v1.0.2 • Build 2025</p>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Atalhos de Teclado Modal */}
+        {isShortcutsOpen && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="absolute inset-0" onClick={() => setIsShortcutsOpen(false)}></div>
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative z-10">
+                    <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-white relative">
+                        <button
+                            onClick={() => setIsShortcutsOpen(false)}
+                            className="absolute right-4 top-4 p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <Keyboard className="w-10 h-10 mb-3 opacity-80" />
+                        <h2 className="text-xl font-bold">Atalhos de Teclado</h2>
+                        <p className="text-purple-100 text-sm mt-1">Agilize seu fluxo de trabalho</p>
+                    </div>
+                    <div className="p-6 space-y-3">
+                        {shortcuts.map((s, i) => (
+                            <div key={i} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+                                <span className="text-sm text-slate-700">{s.description}</span>
+                                <kbd className="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded-lg">{s.keys}</kbd>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
