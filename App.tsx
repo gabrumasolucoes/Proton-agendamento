@@ -29,7 +29,11 @@ const App: React.FC = () => {
 
   // App State
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
+  // Mobile: visualização mensal por padrão (melhor UX em telas pequenas); desktop: semana
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(() => {
+    if (typeof window === 'undefined') return 'week';
+    return window.matchMedia('(max-width: 1023px)').matches ? 'month' : 'week';
+  });
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]); 

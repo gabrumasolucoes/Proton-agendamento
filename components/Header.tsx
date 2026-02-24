@@ -146,8 +146,8 @@ export const Header: React.FC<HeaderProps> = ({
     <>
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 z-20 sticky top-0 transition-all">
         
-        {/* Left: Date Navigation */}
-        <div className="flex items-center gap-6">
+        {/* Left: Date Navigation + View Mode (wrap em mobile para caber Dia/Semana/Mês) */}
+        <div className="flex flex-wrap items-center gap-2 lg:gap-6">
             <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                 <button 
                     onClick={onPrev} 
@@ -179,24 +179,24 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             
             {onViewModeChange && (
-                <div className="hidden lg:flex items-center bg-slate-100/50 p-1 rounded-lg border border-slate-200 ml-4">
+                <div className="flex flex-shrink-0 items-center bg-slate-100/50 p-1 rounded-lg border border-slate-200 ml-2 sm:ml-4">
                     <button 
                         onClick={() => onViewModeChange('day')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${viewMode === 'day' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`min-h-[44px] min-w-[44px] sm:min-w-0 px-2 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'day' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <LayoutList className="w-3.5 h-3.5" /> Dia
+                        <LayoutList className="w-3.5 h-3.5 flex-shrink-0" /> <span className="hidden sm:inline">Dia</span>
                     </button>
                     <button 
                         onClick={() => onViewModeChange('week')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${viewMode === 'week' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`min-h-[44px] min-w-[44px] sm:min-w-0 px-2 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'week' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <Columns className="w-3.5 h-3.5" /> Semana
+                        <Columns className="w-3.5 h-3.5 flex-shrink-0" /> <span className="hidden sm:inline">Semana</span>
                     </button>
                     <button 
                         onClick={() => onViewModeChange('month')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`min-h-[44px] min-w-[44px] sm:min-w-0 px-2 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <Calendar className="w-3.5 h-3.5" /> Mês
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" /> <span className="hidden sm:inline">Mês</span>
                     </button>
                 </div>
             )}
