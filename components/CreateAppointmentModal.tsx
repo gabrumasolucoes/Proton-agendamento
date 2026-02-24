@@ -127,10 +127,10 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[min(90vh,800px)] min-h-[320px] my-auto">
         
-        <div className="bg-gray-100 px-4 py-3 flex justify-between items-center border-b border-gray-200">
+        <div className="bg-gray-100 px-4 py-3 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
            <span className="text-gray-500 text-sm font-medium">
              {initialData ? 'Editar Agendamento' : 'Novo Agendamento'}
            </span>
@@ -139,7 +139,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
            </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <div className="p-6 space-y-6">
             
             <div>
@@ -263,29 +263,29 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
                <Clock className="w-5 h-5 text-gray-400 mt-2" />
                <div className="flex-1 space-y-3">
                   <div className="flex items-center space-x-2">
-                     <div className="relative flex-1">
+                     <div className="relative flex-1 z-10">
                         <input 
                            type="date" 
                            value={date}
                            onChange={(e) => setDate(e.target.value)}
-                           className="w-full bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 font-medium focus:ring-0 cursor-pointer transition-colors"
+                           className="w-full min-h-[44px] bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 font-medium focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 cursor-pointer transition-colors"
                         />
                      </div>
-                     <div className="relative w-28">
+                     <div className="relative w-28 z-10">
                          <input 
                            type="time" 
                            value={startTime}
                            onChange={(e) => setStartTime(e.target.value)}
-                           className="w-full bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 font-medium focus:ring-0 cursor-pointer transition-colors"
+                           className="w-full min-h-[44px] bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 font-medium focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 cursor-pointer transition-colors"
                         />
                      </div>
                      <span className="text-gray-400 text-sm">-</span>
-                     <div className="relative w-28">
+                     <div className="relative w-28 z-10">
                          <input 
                            type="time" 
                            value={endTime}
                            onChange={(e) => setEndTime(e.target.value)}
-                           className="w-full bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 font-medium focus:ring-0 cursor-pointer transition-colors"
+                           className="w-full min-h-[44px] bg-gray-50 hover:bg-gray-100 border-none rounded px-3 py-2 text-sm text-gray-700 font-medium focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 cursor-pointer transition-colors"
                         />
                      </div>
                   </div>
@@ -386,7 +386,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({ 
 
           </div>
           
-          <div className="p-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50">
+          <div className="p-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50 flex-shrink-0">
              <button 
                 type="button" 
                 className="px-5 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

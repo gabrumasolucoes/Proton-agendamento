@@ -442,11 +442,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col my-auto max-h-[min(90vh,800px)] min-h-[320px]">
         
         {/* Header */}
-        <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-200">
+        <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-200 flex-shrink-0">
            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
              Configurações da Empresa
            </h2>
@@ -455,14 +455,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
            </button>
         </div>
         {isMirrorMode && (
-          <div className="px-6 py-2 bg-indigo-50 border-b border-indigo-100 text-sm text-indigo-800">
+          <div className="px-6 py-2 bg-indigo-50 border-b border-indigo-100 text-sm text-indigo-800 flex-shrink-0">
             Modo espelho — apenas visualização. Dados da empresa espelhada.
           </div>
         )}
 
-        <div className="flex flex-1 overflow-hidden min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Sidebar Tabs - rolável para garantir que "Horário de atendimento" apareça */}
-            <div className="w-48 border-r border-slate-200 bg-slate-50 p-4 space-y-2 overflow-y-auto flex-shrink-0">
+            <div className="w-48 border-r border-slate-200 bg-slate-50 p-4 space-y-2 overflow-y-auto flex-shrink-0 min-h-0 overscroll-contain">
                 <button 
                     onClick={() => setActiveTab('doctors')}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'doctors' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
@@ -496,8 +496,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6">
+            {/* Content Area - min-h-0 crítico para scroll no Safari/Mac */}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                 {activeTab === 'doctors' && (
                     <div className="space-y-8">
                         <div>
