@@ -137,18 +137,18 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
       const weekDays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
       return (
-          <div className="flex flex-col h-full bg-white">
+          <div className="flex flex-col h-full bg-white pb-20 md:pb-0">
               {/* Header Days */}
-              <div className="grid grid-cols-7 border-b border-slate-200">
+              <div className="grid grid-cols-7 border-b border-slate-200 flex-shrink-0">
                   {weekDays.map(day => (
-                      <div key={day} className="py-2 text-center text-xs font-semibold text-slate-400">
+                      <div key={day} className="py-1.5 md:py-2 text-center text-[10px] md:text-xs font-semibold text-slate-400">
                           {day}
                       </div>
                   ))}
               </div>
               
               {/* Month Grid */}
-              <div className="flex-1 grid grid-cols-7 grid-rows-5 lg:grid-rows-6 auto-rows-fr">
+              <div className="flex-1 grid grid-cols-7 grid-rows-5 lg:grid-rows-6 auto-rows-fr min-h-0">
                   {calendarDays.map((day, idx) => {
                       const isCurrentMonth = isSameMonth(day, monthStart);
                       const isToday = isSameDay(day, now);
@@ -170,21 +170,21 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                       return (
                           <div 
                             key={idx} 
-                            className={`border-b border-r border-slate-100 p-2 min-h-[100px] flex flex-col relative group transition-colors hover:bg-slate-50 ${bgClass}`}
+                            className={`border-b border-r border-slate-100 p-1 md:p-2 min-h-[72px] md:min-h-[100px] flex flex-col relative group transition-colors hover:bg-slate-50 ${bgClass}`}
                           >
                               {/* Today Indicator Line (Top) - Optional extra highlight */}
                               {isToday && !blocked && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>}
                               {blocked && <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-300/70" title="Dia bloqueado"></div>}
 
-                              <div className="flex justify-between items-start mb-1">
-                                  <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all ${isToday && !blocked ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-110' : ''}`}>
+                              <div className="flex justify-between items-start mb-0.5 md:mb-1">
+                                  <span className={`text-[10px] md:text-xs font-medium min-w-[28px] min-h-[28px] w-7 h-7 flex items-center justify-center rounded-full transition-all ${isToday && !blocked ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-110' : ''}`}>
                                       {format(day, 'd')}
                                   </span>
                                   {blocked && <CalendarOff className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" title="Dia bloqueado" aria-hidden />}
-                                  {isToday && !blocked && <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide mr-1">Hoje</span>}
+                                  {isToday && !blocked && <span className="text-[9px] md:text-[10px] font-bold text-indigo-600 uppercase tracking-wide mr-0.5">Hoje</span>}
                               </div>
                               
-                              <div className="flex-1 space-y-1 overflow-hidden mt-1">
+                              <div className="flex-1 space-y-0.5 md:space-y-1 overflow-hidden mt-0.5 md:mt-1 min-h-0">
                                   {dayAppointments.slice(0, 4).map(apt => {
                                       const { cardClasses, textClasses, borderAccent } = getAppointmentStyles(apt, 'month');
                                       const matches = isMatch(apt);
@@ -196,7 +196,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                   e.stopPropagation(); 
                                                   onSelectAppointment(apt);
                                               }}
-                                              className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate flex items-center gap-1 transition-all ${cardClasses} ${matches ? 'opacity-100' : 'opacity-20'} cursor-pointer`}
+                                              className={`w-full text-left px-1.5 py-1 md:py-0.5 rounded text-[9px] md:text-[10px] truncate flex items-center gap-1 min-h-[32px] md:min-h-0 transition-all ${cardClasses} ${matches ? 'opacity-100' : 'opacity-20'} cursor-pointer touch-manipulation`}
                                           >
                                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${borderAccent.replace('bg-', 'bg-')}`}></div>
                                               <span className={`font-medium truncate flex-1 min-w-0 ${textClasses}`}>
@@ -208,7 +208,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                       );
                                   })}
                                   {dayAppointments.length > 4 && (
-                                      <div className="text-[10px] text-slate-400 font-medium pl-2">
+                                      <div className="text-[9px] md:text-[10px] text-slate-400 font-medium pl-1 md:pl-2">
                                           + {dayAppointments.length - 4} mais
                                       </div>
                                   )}

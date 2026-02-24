@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { addWeeks, subWeeks, addMonths, subMonths, addDays, subDays } from 'date-fns';
-import { Eye, ArrowLeft, Shield } from 'lucide-react';
+import { Eye, ArrowLeft, Shield, Plus } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LoginScreen } from './components/LoginScreen';
@@ -837,6 +837,22 @@ const App: React.FC = () => {
         <main className="flex-1 overflow-hidden relative">
             {renderContent()}
         </main>
+
+        {/* FAB Mobile: "Novo Agendamento" visível no celular (sidebar oculta em md) */}
+        {currentView === 'calendar' && (
+          <div className="fixed bottom-6 left-4 right-4 z-30 md:hidden">
+            <button
+              type="button"
+              onClick={() => handleCreateClick('appointment')}
+              disabled={mirrorMode.isActive}
+              className={`w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-semibold text-[15px] shadow-lg transition-all active:scale-[0.98] ${mirrorMode.isActive ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'}`}
+              title={mirrorMode.isActive ? 'Modo visualização' : 'Novo agendamento'}
+            >
+              <Plus className="w-5 h-5" />
+              Novo Agendamento
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedAppointment && (
