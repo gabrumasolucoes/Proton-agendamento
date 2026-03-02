@@ -97,3 +97,5 @@ O índice geral do projeto (SDR + Proton) está em **DOCUMENTACAO.md** na raiz d
 
 **Produção:** `https://proton.gabruma.com.br`  
 **Repositório:** Parte do [gabrumasolucoes/App-SDR](https://github.com/gabrumasolucoes/App-SDR) (pasta `Proton-agendamento/`).
+
+*Última revisão do README: março/2026.*
