@@ -87,7 +87,7 @@ export interface AppNotification {
   message: string;
   time: string;
   read: boolean;
-  type: 'info' | 'success' | 'warning' | 'alert';
+  type: 'info' | 'success' | 'warning' | 'alert' | 'error';
 }
 
 // Horário de atendimento por dia (business_hours). day_of_week: 0=domingo .. 6=sábado

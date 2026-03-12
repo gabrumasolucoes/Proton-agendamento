@@ -180,7 +180,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                   <span className={`text-[10px] md:text-xs font-medium min-w-[28px] min-h-[28px] w-7 h-7 flex items-center justify-center rounded-full transition-all ${isToday && !blocked ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-110' : ''}`}>
                                       {format(day, 'd')}
                                   </span>
-                                  {blocked && <CalendarOff className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" title="Dia bloqueado" aria-hidden />}
+                                  {blocked && <CalendarOff className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" aria-label="Dia bloqueado" />}
                                   {isToday && !blocked && <span className="text-[9px] md:text-[10px] font-bold text-indigo-600 uppercase tracking-wide mr-0.5">Hoje</span>}
                               </div>
                               
@@ -374,7 +374,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({ currentDate, viewMod
                                                                     </div>
                                                                 )}
                                                                 {apt.confirmedAt && (
-                                                                    <CheckCircle className="w-3 h-3 text-emerald-600" title="Cliente confirmou pelo link" />
+                                                                    <CheckCircle className="w-3 h-3 text-emerald-600" aria-label="Cliente confirmou pelo link" />
                                                                 )}
                                                             </span>
                                                         </div>

@@ -728,6 +728,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                                             <PatientsView
                                                                 patients={mirrorPatients}
                                                                 appointments={mirrorAppointments}
+                                                                doctors={mirrorDoctors}
                                                                 searchTerm=""
                                                                 onSearchChange={() => {}}
                                                                 onAddPatient={() => {}}
@@ -739,7 +740,7 @@ export const UsersManagementModal: React.FC<UsersManagementModalProps> = ({ isOp
                                                     )}
                                                     {mirrorView === 'reports' && (
                                                         <div className="p-4">
-                                                            <ReportsView appointments={mirrorAppointments} />
+                                                            <ReportsView appointments={mirrorAppointments} doctors={mirrorDoctors} />
                                                         </div>
                                                     )}
                                                 </>

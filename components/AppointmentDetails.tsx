@@ -11,8 +11,8 @@ import { apiData } from '../services/api';
 interface AppointmentDetailsProps {
   appointment: Appointment | null;
   onClose: () => void;
-  onUpdateStatus: (id: string, status: Appointment['status']) => void;
-  onEdit: (appointment: Appointment) => void;
+  onUpdateStatus?: (id: string, status: Appointment['status']) => void;
+  onEdit?: (appointment: Appointment) => void;
   doctors?: DoctorProfile[];
   isDemo?: boolean;
   onMarkNoShow?: () => void;
@@ -366,6 +366,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
             </div>
 
             <div className="flex items-center gap-3">
+                {onEdit && (
                 <button 
                     onClick={() => onEdit(appointment)}
                     className="flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900 bg-transparent border border-transparent hover:border-slate-200 rounded-lg transition-all"
@@ -373,8 +374,9 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                     <Edit3 className="w-4 h-4 mr-2" />
                     Editar
                 </button>
+                )}
                 
-                {appointment.status !== 'in_progress' && appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
+                {onUpdateStatus && appointment.status !== 'in_progress' && appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
                     <button 
                         onClick={() => onUpdateStatus(appointment.id, 'in_progress')}
                         className="flex items-center px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md shadow-indigo-200 transition-all hover:-translate-y-0.5"
@@ -384,7 +386,7 @@ export const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointm
                     </button>
                 )}
                 
-                {appointment.status === 'in_progress' && (
+                {onUpdateStatus && appointment.status === 'in_progress' && (
                     <button 
                          onClick={() => onUpdateStatus(appointment.id, 'completed')}
                          className="flex items-center px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-md shadow-emerald-200 transition-all hover:-translate-y-0.5"

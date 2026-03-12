@@ -62,6 +62,6 @@ export const supabase = new Proxy({} as SupabaseClient, {
         'Supabase não inicializado. Chame await ensureSupabase() antes de usar supabase.'
       );
     }
-    return (_client as Record<string | symbol, unknown>)[prop];
+    return (_client as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
