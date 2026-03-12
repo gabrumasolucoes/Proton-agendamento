@@ -118,15 +118,18 @@ export interface ReminderSettings {
 // Estatísticas de lembretes (F7)
 export interface ReminderStats {
   totalSent: number;
-  confirmedViaReminder: number;
-  cancelledViaReminder: number;
+  totalResponded: number;
+  totalConfirmed: number;
+  totalCancelled: number;
+  totalCancelledViaReminder?: number;
+  totalNoResponse: number;
   responseRate: number;
   confirmationRate: number;
   cancellationRate: number;
-  noResponseRate: number;
-  avgResponseTimeMinutes: number;
-  byWeekday?: Record<string, { sent: number; confirmed: number; cancelled: number }>;
-  byHour?: Record<string, { sent: number; responseRate: number }>;
+  noResponseRate?: number;
+  averageResponseTimeMinutes: number;
+  byDayOfWeek: Record<string, { sent: number; confirmed: number; cancelled: number }>;
+  byHour?: Record<string, { sent: number; confirmed: number; cancelled: number }>;
 }
 
 // Analytics de no-show (F10)
